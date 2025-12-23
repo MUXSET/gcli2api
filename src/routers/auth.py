@@ -45,7 +45,7 @@ async def login(request: LoginRequest, http_request: Request):
         user_id = login_result.get("user_id")
         
         audit_logger.log_event("login_success", user_id, {"is_admin": is_admin}, http_request.client.host)
-        return {"token": token, "is_admin": is_admin, "user_id": user_id}
+        return {"token": token, "is_admin": is_admin, "user_id": user_id, "role": login_result.get("role")}
     else:
         audit_logger.log_event("login_failed", "unknown", {"username": request.username}, http_request.client.host)
         raise HTTPException(status_code=401, detail="用户名或密码错误")
@@ -62,7 +62,8 @@ async def refresh_user_token(
             raise HTTPException(status_code=404, detail="User not found")
         
         # Determine admin status
-        is_admin = (await user_manager.get_user_role(user_id)) == 'admin'
+        role = await user_manager.get_user_role(user_id)
+        is_admin = role == 'admin'
         
         # Generate new token
         new_token = await user_manager.create_access_token(user_id)
@@ -70,7 +71,8 @@ async def refresh_user_token(
         return {
              "token": new_token,
              "is_admin": is_admin,
-             "user_id": user_id
+             "user_id": user_id,
+             "role": role
         }
     except Exception as e:
         log.error(f"Failed to refresh token: {e}")
