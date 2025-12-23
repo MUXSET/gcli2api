@@ -107,25 +107,68 @@ def should_include_thoughts(model_name):
 
 
 # Dynamic Configuration System - Optimized for memory efficiency
+# 全局配置缓存
+_config_cache: dict[str, Any] = {}
+_config_initialized = False
+
+# ====================== 配置系统 ======================
+
+async def init_config():
+    """初始化配置缓存（启动时调用一次）"""
+    global _config_cache, _config_initialized
+
+    if _config_initialized:
+        return
+
+    try:
+        from src.storage_adapter import get_storage_adapter
+        storage_adapter = await get_storage_adapter()
+        _config_cache = await storage_adapter.get_all_config()
+        _config_initialized = True
+    except Exception:
+        # 初始化失败时使用空缓存
+        _config_cache = {}
+        _config_initialized = True
+
+
+async def reload_config():
+    """重新加载配置（修改配置后调用）"""
+    global _config_cache, _config_initialized
+
+    try:
+        from src.storage_adapter import get_storage_adapter
+        storage_adapter = await get_storage_adapter()
+
+        # 如果后端支持 reload_config_cache，调用它
+        if hasattr(storage_adapter._backend, 'reload_config_cache'):
+            await storage_adapter._backend.reload_config_cache()
+
+        # 重新加载配置缓存
+        _config_cache = await storage_adapter.get_all_config()
+        _config_initialized = True
+    except Exception:
+        pass
+
+
+def _get_cached_config(key: str, default: Any = None) -> Any:
+    """从内存缓存获取配置（同步）"""
+    return _config_cache.get(key, default)
+
+
 async def get_config_value(key: str, default: Any = None, env_var: Optional[str] = None) -> Any:
     """Get configuration value with priority: ENV > Storage > default."""
+    # 确保配置已初始化
+    if not _config_initialized:
+        await init_config()
+
     # Priority 1: Environment variable
     if env_var and os.getenv(env_var):
         return os.getenv(env_var)
 
-    # Priority 2: Storage system
-    try:
-        from src.storage_adapter import get_storage_adapter
-
-        storage_adapter = await get_storage_adapter()
-        value = await storage_adapter.get_config(key)
-        # 检查值是否存在（不是None），允许空字符串、0、False等有效值
-        if value is not None:
-            return value
-    except Exception:
-        # Debug: print import/storage errors
-        # print(f"Config storage error for key {key}: {e}")
-        pass
+    # Priority 2: Memory cache
+    value = _get_cached_config(key)
+    if value is not None:
+        return value
 
     return default
 

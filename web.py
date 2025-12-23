@@ -35,6 +35,11 @@ from src.task_manager import shutdown_all_tasks
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     log.info("启动 GCLI2API 主服务")
+    
+    # 初始化配置
+    import config
+    await config.init_config()
+    log.info("配置初始化成功")
 
     # 初始化全局凭证管理器
     try:
