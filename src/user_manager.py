@@ -238,11 +238,14 @@ class UserManager:
             return False
 
     async def create_admin_if_not_exists(self):
-        """Create default admin user if not exists"""
-        row = await self._execute("SELECT id FROM users WHERE username=?", ('admin',), fetch_one=True)
+        """Create default admin user if not exists, or ensure admin role"""
+        row = await self._execute("SELECT id, role FROM users WHERE username=?", ('admin',), fetch_one=True)
         if not row:
             log.info("Creating default admin user...")
             await self.register("admin", "admin", role="admin")
+        elif row['role'] != 'admin':
+            log.warning("Admin user exists but has wrong role. Fixing...")
+            await self._execute("UPDATE users SET role='admin' WHERE username=?", ('admin',))
 
     async def login(self, username, password) -> Optional[dict]:
         pwd_hash = self._hash_password(password)
