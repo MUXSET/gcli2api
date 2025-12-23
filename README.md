@@ -174,11 +174,11 @@ curl -X POST http://127.0.0.1:7861/v1/chat/completions \
 #### 1. 业务数据 (凭证/配置/状态)
 由 `StorageAdapter` 管理，支持以下后端 (按优先级自动检测):
 
-1. 🔴 **Redis** (推荐, Async) - 设置 `REDIS_URI`
+1. 🔴 **Redis** (推荐, Async) - 设置 `REDIS_URI` (高性能缓存)
 2. 🐬 **MySQL** (Async) - 设置 `MYSQL_URI`
 3. 🐘 **PostgreSQL** (Async) - 设置 `POSTGRES_DSN`
 4. 🍃 **MongoDB** (Async) - 设置 `MONGODB_URI`
-5. 📁 **本地文件** (兜底) - 无需配置
+5. 📁 **本地文件** (默认, Zero-Config) - 无需任何配置，开箱即用
 
 #### 2. 用户数据 (账号/Token/权限)
 由 `UserManager` 管理，目前支持：
