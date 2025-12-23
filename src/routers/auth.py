@@ -37,8 +37,13 @@ async def register(request: RegisterRequest):
 @router.post("/auth/login")
 async def login(request: LoginRequest, http_request: Request):
     """Login and get token"""
-    token, is_admin, user_id = await user_manager.login(request.username, request.password)
-    if token:
+    login_result = await user_manager.login(request.username, request.password)
+    
+    if login_result:
+        token = login_result.get("token")
+        is_admin = login_result.get("role") == "admin"
+        user_id = login_result.get("user_id")
+        
         audit_logger.log_event("login_success", user_id, {"is_admin": is_admin}, http_request.client.host)
         return {"token": token, "is_admin": is_admin, "user_id": user_id}
     else:
