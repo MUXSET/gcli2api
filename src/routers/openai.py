@@ -1,0 +1,500 @@
+"""
+OpenAI Router - Handles OpenAI format API requests
+处理OpenAI格式请求的路由模块
+"""
+
+import asyncio
+import json
+import time
+import uuid
+from contextlib import asynccontextmanager
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from config import (
+    get_anti_truncation_max_attempts,
+    get_available_models,
+    get_base_model_from_feature_model,
+    is_anti_truncation_model,
+    is_fake_streaming_model,
+)
+from log import log
+
+from src.anti_truncation import apply_anti_truncation_to_stream
+from src.credential_manager import CredentialManager, get_credential_manager
+from src.google_chat_api import send_gemini_request
+from src.models import ChatCompletionRequest, Model, ModelList
+from src.usage_stats import get_usage_stats_instance
+from src.openai_transfer import (
+    _convert_usage_metadata,
+    gemini_response_to_openai,
+    gemini_stream_chunk_to_openai,
+    openai_request_to_gemini_payload,
+)
+from src.task_manager import create_managed_task
+
+# 创建路由器
+router = APIRouter()
+security = HTTPBearer()
+
+
+
+from src.user_manager import user_manager
+
+async def authenticate(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """验证用户密码或API Key"""
+    token = credentials.credentials
+    
+    # 1. 尝试验证 API Key
+    if token.startswith("sk-gcli-"):
+        user_id = await user_manager.get_user_by_api_key(token)
+        if user_id:
+            return {"type": "user", "user_id": user_id, "token": token}
+
+    # 2. Global password auth removed for RBAC
+    # (Previously checked get_api_password)
+        
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无效的 API Key")
+
+
+@router.get("/v1/models", response_model=ModelList)
+async def list_models():
+    """返回OpenAI格式的模型列表"""
+    models = get_available_models("openai")
+    return ModelList(data=[Model(id=m) for m in models])
+
+
+@router.post("/v1/chat/completions")
+async def chat_completions(request: Request, auth_info: dict = Depends(authenticate)):
+    """处理OpenAI格式的聊天完成请求"""
+
+    # 获取原始请求数据
+    try:
+        raw_data = await request.json()
+    except Exception as e:
+        log.error(f"Failed to parse JSON request: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
+
+    # 创建请求对象
+    try:
+        request_data = ChatCompletionRequest(**raw_data)
+    except Exception as e:
+        log.error(f"Request validation failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Request validation error: {str(e)}")
+
+    # 健康检查
+    if (
+        len(request_data.messages) == 1
+        and getattr(request_data.messages[0], "role", None) == "user"
+        and getattr(request_data.messages[0], "content", None) == "Hi"
+    ):
+        return JSONResponse(
+            content={
+                "choices": [{"message": {"role": "assistant", "content": "gcli2api正常工作中"}}]
+            }
+        )
+
+    # 限制max_tokens
+    if getattr(request_data, "max_tokens", None) is not None and request_data.max_tokens > 65535:
+        request_data.max_tokens = 65535
+
+    # 覆写 top_k 为 64
+    setattr(request_data, "top_k", 64)
+
+    # 过滤空消息
+    filtered_messages = []
+    for m in request_data.messages:
+        content = getattr(m, "content", None)
+        if content:
+            if isinstance(content, str) and content.strip():
+                filtered_messages.append(m)
+            elif isinstance(content, list) and len(content) > 0:
+                has_valid_content = False
+                for part in content:
+                    if isinstance(part, dict):
+                        if part.get("type") == "text" and part.get("text", "").strip():
+                            has_valid_content = True
+                            break
+                        elif part.get("type") == "image_url" and part.get("image_url", {}).get(
+                            "url"
+                        ):
+                            has_valid_content = True
+                            break
+                if has_valid_content:
+                    filtered_messages.append(m)
+
+    request_data.messages = filtered_messages
+
+    # 处理模型名称和功能检测
+    model = request_data.model
+    use_fake_streaming = is_fake_streaming_model(model)
+    use_anti_truncation = is_anti_truncation_model(model)
+
+    # 获取基础模型名
+    real_model = get_base_model_from_feature_model(model)
+    request_data.model = real_model
+
+    # 获取凭证管理器
+    from src.credential_manager import get_credential_manager
+    from config import get_credential_isolation_mode
+
+    cred_mgr = await get_credential_manager()
+    
+    # 检查配额 (Quota Check)
+    if auth_info["user_id"]:
+        uid = auth_info["user_id"]
+        user_data = await user_manager.get_user(uid)
+        if user_data:
+            quota = user_data.get("quota_daily", 0)
+            if quota > 0:
+                # Check usage
+                usage_stats = await get_usage_stats_instance()
+                # Get stats for this user
+                # UsageStats tracks user usage with key "USER_stats_{user_id}"
+                user_key = f"USER_stats_{uid}"
+                stats = await usage_stats.get_usage_stats(user_key)
+                current_usage = stats.get("calls_24h", 0)
+                
+                log.debug(f"[Quota Check] User: {uid}, Key: {user_key}, Current: {current_usage}, Quota: {quota}")
+                
+                if current_usage >= quota:
+                    log.warning(f"User {uid} quota exceeded: {current_usage}/{quota}")
+                    raise HTTPException(status_code=429, detail=f"Daily quota exceeded ({current_usage}/{quota})")
+    
+    # 检查凭证隔离模式
+    isolation_mode = await get_credential_isolation_mode()
+    target_user_id = None
+    
+    if isolation_mode:
+        # 隔离模式下，必须使用用户 API Key
+        if auth_info["type"] != "user":
+            raise HTTPException(status_code=403, detail="当前系统开启了凭证隔离模式，请使用个人 API Key 调用接口")
+        target_user_id = auth_info["user_id"]
+    elif auth_info["type"] == "user":
+        # 非隔离模式下，如果是用户调用，也可以优先使用自己的凭证（可选逻辑，这里暂且只在隔离模式强制）
+        # 或者我们可以设计为：非隔离模式下，用户也可以指定只用自己的，但这里简单起见，非隔离模式下混合使用
+        pass
+
+    # 获取有效凭证
+    credential_result = await cred_mgr.get_valid_credential(user_id=target_user_id)
+    if not credential_result:
+        msg = "当前无可用凭证"
+        if target_user_id:
+            msg += " (仅搜索当前用户上传的凭证)"
+        log.error(msg)
+        raise HTTPException(status_code=500, detail=msg)
+
+    current_file = credential_result
+    log.debug(f"Using credential: {current_file}")
+
+    # 增加调用计数
+    cred_mgr.increment_call_count()
+
+    # 转换为Gemini API payload格式
+    try:
+        api_payload = await openai_request_to_gemini_payload(request_data)
+    except Exception as e:
+        log.error(f"OpenAI to Gemini conversion failed: {e}")
+        raise HTTPException(status_code=500, detail="Request conversion failed")
+
+    # 处理假流式
+    if use_fake_streaming and getattr(request_data, "stream", False):
+        request_data.stream = False
+        current_user_id = auth_info.get("user_id")
+        return await fake_stream_response(api_payload, cred_mgr, user_id=current_user_id)
+
+    # 处理抗截断 (仅流式传输时有效)
+    is_streaming = getattr(request_data, "stream", False)
+    if use_anti_truncation and is_streaming:
+        log.info("启用流式抗截断功能")
+        max_attempts = await get_anti_truncation_max_attempts()
+
+        # 使用流式抗截断处理器
+        gemini_response = await apply_anti_truncation_to_stream(
+            lambda api_payload: send_gemini_request(api_payload, is_streaming, cred_mgr, user_id=auth_info.get("user_id")),
+            api_payload,
+            max_attempts,
+        )
+
+        return await convert_streaming_response(gemini_response, model)
+    elif use_anti_truncation and not is_streaming:
+        log.warning("抗截断功能仅在流式传输时有效，非流式请求将忽略此设置")
+
+    # 发送请求（429重试已在google_api_client中处理）
+    is_streaming = getattr(request_data, "stream", False)
+    log.debug(f"Sending request: streaming={is_streaming}, model={real_model}")
+    current_user_id = auth_info.get("user_id")
+    response = await send_gemini_request(api_payload, is_streaming, cred_mgr, user_id=current_user_id)
+
+    # 如果是流式响应，直接返回
+    if is_streaming:
+        return await convert_streaming_response(response, model)
+
+    # 转换非流式响应
+    try:
+        if hasattr(response, "body"):
+            response_data = json.loads(
+                response.body.decode() if isinstance(response.body, bytes) else response.body
+            )
+        else:
+            response_data = json.loads(
+                response.content.decode()
+                if isinstance(response.content, bytes)
+                else response.content
+            )
+
+        openai_response = gemini_response_to_openai(response_data, model)
+        return JSONResponse(content=openai_response)
+
+    except Exception as e:
+        log.error(f"Response conversion failed: {e}")
+        log.error(f"Response object: {response}")
+        raise HTTPException(status_code=500, detail="Response conversion failed")
+
+
+async def fake_stream_response(api_payload: dict, cred_mgr: CredentialManager, user_id: str = None) -> StreamingResponse:
+    """处理假流式响应"""
+
+    async def stream_generator():
+        try:
+            # 发送心跳
+            heartbeat = {
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": ""},
+                        "finish_reason": None,
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(heartbeat)}\n\n".encode()
+
+            # 异步发送实际请求
+            async def get_response():
+                return await send_gemini_request(api_payload, False, cred_mgr, user_id=user_id)
+
+            # 创建请求任务
+            response_task = create_managed_task(get_response(), name="openai_fake_stream_request")
+
+            try:
+                # 每3秒发送一次心跳，直到收到响应
+                while not response_task.done():
+                    await asyncio.sleep(3.0)
+                    if not response_task.done():
+                        yield f"data: {json.dumps(heartbeat)}\n\n".encode()
+
+                # 获取响应结果
+                response = await response_task
+
+            except asyncio.CancelledError:
+                # 取消任务并传播取消
+                response_task.cancel()
+                try:
+                    await response_task
+                except asyncio.CancelledError:
+                    pass
+                raise
+            except Exception as e:
+                # 取消任务并处理其他异常
+                response_task.cancel()
+                try:
+                    await response_task
+                except asyncio.CancelledError:
+                    pass
+                log.error(f"Fake streaming request failed: {e}")
+                raise
+
+            # 发送实际请求
+            # response 已在上面获取
+
+            # 处理结果
+            if hasattr(response, "body"):
+                body_str = (
+                    response.body.decode()
+                    if isinstance(response.body, bytes)
+                    else str(response.body)
+                )
+            elif hasattr(response, "content"):
+                body_str = (
+                    response.content.decode()
+                    if isinstance(response.content, bytes)
+                    else str(response.content)
+                )
+            else:
+                body_str = str(response)
+
+            try:
+                response_data = json.loads(body_str)
+
+                # 从Gemini响应中提取内容，使用思维链分离逻辑
+                content = ""
+                reasoning_content = ""
+                if "candidates" in response_data and response_data["candidates"]:
+                    # Gemini格式响应 - 使用思维链分离
+                    from src.openai_transfer import _extract_content_and_reasoning
+
+                    candidate = response_data["candidates"][0]
+                    if "content" in candidate and "parts" in candidate["content"]:
+                        parts = candidate["content"]["parts"]
+                        content, reasoning_content = _extract_content_and_reasoning(parts)
+                elif "choices" in response_data and response_data["choices"]:
+                    # OpenAI格式响应
+                    content = response_data["choices"][0].get("message", {}).get("content", "")
+
+                # 如果没有正常内容但有思维内容，给出警告
+                if not content and reasoning_content:
+                    log.warning("Fake stream response contains only thinking content")
+                    content = "[模型正在思考中，请稍后再试或重新提问]"
+
+                if content:
+                    # 构建响应块，包括思维内容（如果有）
+                    delta = {"role": "assistant", "content": content}
+                    if reasoning_content:
+                        delta["reasoning_content"] = reasoning_content
+
+                    # 转换usageMetadata为OpenAI格式
+                    usage = _convert_usage_metadata(response_data.get("usageMetadata"))
+
+                    # 构建完整的OpenAI格式的流式响应块
+                    content_chunk = {
+                        "id": str(uuid.uuid4()),
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": "gcli2api-streaming",
+                        "choices": [{"index": 0, "delta": delta, "finish_reason": "stop"}],
+                    }
+
+                    # 只有在有usage数据时才添加usage字段（确保在最后一个chunk中）
+                    if usage:
+                        content_chunk["usage"] = usage
+
+                    yield f"data: {json.dumps(content_chunk)}\n\n".encode()
+                else:
+                    log.warning(f"No content found in response: {response_data}")
+                    # 如果完全没有内容，提供默认回复
+                    error_chunk = {
+                        "id": str(uuid.uuid4()),
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": "gcli2api-streaming",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"role": "assistant", "content": "[响应为空，请重新尝试]"},
+                                "finish_reason": "stop",
+                            }
+                        ],
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n".encode()
+            except json.JSONDecodeError:
+                error_chunk = {
+                    "id": str(uuid.uuid4()),
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": "gcli2api-streaming",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"role": "assistant", "content": body_str},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                }
+                yield f"data: {json.dumps(error_chunk)}\n\n".encode()
+
+            yield "data: [DONE]\n\n".encode()
+
+        except Exception as e:
+            log.error(f"Fake streaming error: {e}")
+            error_chunk = {
+                "id": str(uuid.uuid4()),
+                "object": "chat.completion.chunk",
+                "created": int(time.time()),
+                "model": "gcli2api-streaming",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": f"Error: {str(e)}"},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n".encode()
+            yield "data: [DONE]\n\n".encode()
+
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
+
+async def convert_streaming_response(gemini_response, model: str) -> StreamingResponse:
+    """转换流式响应为OpenAI格式"""
+    response_id = str(uuid.uuid4())
+
+    async def openai_stream_generator():
+        try:
+            # 处理不同类型的响应对象
+            if hasattr(gemini_response, "body_iterator"):
+                # FastAPI StreamingResponse
+                async for chunk in gemini_response.body_iterator:
+                    if not chunk:
+                        continue
+
+                    # 处理不同数据类型的startswith问题
+                    if isinstance(chunk, bytes):
+                        if not chunk.startswith(b"data: "):
+                            continue
+                        payload = chunk[len(b"data: ") :]
+                    else:
+                        chunk_str = str(chunk)
+                        if not chunk_str.startswith("data: "):
+                            continue
+                        payload = chunk_str[len("data: ") :].encode()
+                    try:
+                        gemini_chunk = json.loads(payload.decode())
+                        openai_chunk = gemini_stream_chunk_to_openai(
+                            gemini_chunk, model, response_id
+                        )
+                        yield f"data: {json.dumps(openai_chunk, separators=(',', ':'))}\n\n".encode()
+                    except json.JSONDecodeError:
+                        continue
+            else:
+                # 其他类型的响应，尝试直接处理
+                log.warning(f"Unexpected response type: {type(gemini_response)}")
+                error_chunk = {
+                    "id": response_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"role": "assistant", "content": "Response type error"},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                }
+                yield f"data: {json.dumps(error_chunk)}\n\n".encode()
+
+            # 发送结束标记
+            yield "data: [DONE]\n\n".encode()
+
+        except Exception as e:
+            log.error(f"Stream conversion error: {e}")
+            error_chunk = {
+                "id": response_id,
+                "object": "chat.completion.chunk",
+                "created": int(time.time()),
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": f"Stream error: {str(e)}"},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n".encode()
+            yield "data: [DONE]\n\n".encode()
+
+    return StreamingResponse(openai_stream_generator(), media_type="text/event-stream")

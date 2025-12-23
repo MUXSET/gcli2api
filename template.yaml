@@ -1,0 +1,49 @@
+﻿apiVersion: zeabur.com/v1
+kind: Template
+metadata:
+  name: gcli2api
+spec:
+  description: "灏?GeminiCLI 杞崲涓?OpenAI 鍜?GEMINI API 鎺ュ彛"
+  tags:
+    - ai
+    - api
+    - gemini
+    - openai
+  variables:
+    - key: PASSWORD
+      type: STRING
+      name: API瀵嗙爜
+      description: 鐢ㄤ簬璁块棶API鍜屾帶鍒堕潰鏉跨殑瀵嗙爜
+    - key: DOMAIN
+      type: DOMAIN
+      name: 鍩熷悕
+      description: 鏈嶅姟璁块棶鍩熷悕
+  readme: |
+    # GeminiCLI to API
+
+    灏?GeminiCLI 杞崲涓?OpenAI 鍜?GEMINI API 鎺ュ彛
+
+    閮ㄧ讲鍚庤璁块棶鎮ㄧ殑鍩熷悕杩涜閰嶇疆銆?  services:
+    - name: gcli2api
+      template: PREBUILT
+      spec:
+        id: gcli2api
+        name: gcli2api
+        source:
+          image: ghcr.io/MUXSET/gcli2api:latest
+        ports:
+          - id: web
+            port: 7861
+            type: HTTP
+        env:
+          PASSWORD:
+            default: ${PASSWORD}
+          PORT:
+            default: "7861"
+          HOST:
+            default: "0.0.0.0"
+          DOMAIN:
+            default: ${DOMAIN}
+        volumes:
+          - id: creds
+            dir: /app/creds

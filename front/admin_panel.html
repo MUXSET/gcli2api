@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCLI2API 管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge-role {
+            font-size: 0.9em;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #1e1e1e !important;
+            border-bottom: 1px solid #333;
+        }
+
+        body.dark-mode .navbar-brand,
+        body.dark-mode .navbar-text {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .card {
+            background-color: #1e1e1e;
+            border-color: #333;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .card-header {
+            background-color: #252525;
+            border-bottom-color: #333;
+        }
+
+        body.dark-mode .table {
+            color: #e0e0e0;
+            --bs-table-color: #e0e0e0;
+            --bs-table-hover-color: #e0e0e0;
+            --bs-table-bg: #1e1e1e;
+            --bs-table-hover-bg: #2c2c2c;
+            border-color: #333;
+        }
+
+        body.dark-mode .table-striped>tbody>tr:nth-of-type(odd)>* {
+            --bs-table-accent-bg: #252525;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .modal-content {
+            background-color: #1e1e1e;
+            border-color: #333;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .modal-header,
+        body.dark-mode .modal-footer {
+            border-color: #333;
+        }
+
+        body.dark-mode .close {
+            filter: invert(1);
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background-color: #2c2c2c;
+            border-color: #444;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .form-text {
+            color: #aaa;
+        }
+
+        body.dark-mode .login-container {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content.dark-mode {
+            background-color: #1e1e1e;
+            border-color: #333;
+            color: #e0e0e0;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            padding-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white rounded shadow-sm mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">GCLI2API Admin</a>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm me-3" onclick="toggleDarkMode()"
+                        id="themeToggleBtn">🌙</button>
+                    <span class="navbar-text me-3" id="currentUserDisplay">Loading...</span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Dashboard -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card h-100">
+                    <div class="card-header">流量趋势 (24h)</div>
+                    <div class="card-body" style="height: 300px">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card h-100">
+                    <div class="card-header">响应延迟趋势 (平均 / P95)</div>
+                    <div class="card-body" style="height: 300px">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">凭证状态分布</div>
+                    <div class="card-body" style="height: 300px">
+                        <canvas id="healthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">凭证归属分布</div>
+                    <div class="card-body" style="height: 300px">
+                        <canvas id="ownershipChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Errors -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">最近系统报错 (Last 50)</h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="fetchErrorLogs()">刷新日志</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-striped mb-0 small">
+                                <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>凭证</th>
+                                        <th>User ID</th>
+                                        <th>状态码</th>
+                                        <th>错误详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="errorLogTableBody">
+                                    <!-- Logs -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">用户管理</h5>
+                        <button class="btn btn-primary btn-sm" onclick="loadUsers()">刷新列表</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户名</th>
+                                        <th>角色</th>
+                                        <th>配额 (Quota)</th>
+                                        <th>状态 (Status)</th>
+                                        <th>注册时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userTableBody">
+                                    <!-- 用户列表将在这里渲染 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">系统审计日志 (Audit Logs)</h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="fetchAuditLogs()">刷新日志</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="p-2 border-bottom d-flex gap-2 align-items-center flex-wrap bg-light">
+                            <select id="auditActionFilter" class="form-select form-select-sm" style="width: 110px;">
+                                <option value="">所有操作</option>
+                                <option value="login_success">登录成功</option>
+                                <option value="login_failed">登录失败</option>
+                                <option value="upload_credential">上传凭证</option>
+                                <option value="upload_credential_failed">上传失败</option>
+                                <option value="delete_credential">删除凭证</option>
+                                <option value="toggle_credential">切换凭证</option>
+                                <option value="download_credential">下载凭证</option>
+                                <option value="update_user_status">用户更新</option>
+                                <option value="impersonate_user">模拟用户</option>
+                            </select>
+                            <input type="text" id="auditUserFilter" class="form-control form-control-sm"
+                                placeholder="用户 ID" style="width: 120px;">
+                            <input type="date" id="auditStartDate" class="form-control form-control-sm"
+                                style="width: 130px;">
+                            <span class="text-muted">-</span>
+                            <input type="date" id="auditEndDate" class="form-control form-control-sm"
+                                style="width: 130px;">
+
+                            <button class="btn btn-primary btn-sm" onclick="fetchAuditLogs(1)">搜索</button>
+                            <div class="vr"></div>
+                            <button class="btn btn-outline-success btn-sm" onclick="exportAuditLogs()">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> 导出CSV
+                            </button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                            <table class="table table-sm table-striped table-hover mb-0 small"
+                                style="table-layout: fixed;">
+                                <thead
+                                    style="position: sticky; top: 0; background: white; z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                    <tr>
+                                        <th style="width: 15%;">时间</th>
+                                        <th style="width: 10%;">操作</th>
+                                        <th style="width: 20%;">用户 ID</th>
+                                        <th style="width: 10%;">IP</th>
+                                        <th style="width: 45%;">详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditLogTableBody">
+                                    <!-- Logs -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer p-2 d-flex justify-content-between align-items-center">
+                            <small class="text-muted" id="auditLogInfo">加载中...</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="changeAuditPage(-1)"
+                                    id="auditPrevBtn" disabled>&laquo;</button>
+                                <button class="btn btn-outline-secondary" disabled id="auditPageBtn">1</button>
+                                <button class="btn btn-outline-secondary" onclick="changeAuditPage(1)" id="auditNextBtn"
+                                    disabled>&raquo;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">系统设置</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="mb-3 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="isolationMode">
+                                <label class="form-check-label" for="isolationMode">
+                                    <strong>凭证隔离模式</strong>
+                                    <div class="text-muted small">开启后，用户只能使用自己上传的凭证，且必须使用个人 API Key 调用接口。</div>
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="saveConfig()">保存设置</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">系统公告管理</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="announcementForm">
+                            <div class="mb-3">
+                                <label for="announcementContent" class="form-label">公告内容</label>
+                                <textarea class="form-control" id="announcementContent" rows="3"
+                                    placeholder="输入公告内容..."></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="announcementLevel" class="form-label">公告级别</label>
+                                    <select class="form-select" id="announcementLevel">
+                                        <option value="info">信息 (蓝色)</option>
+                                        <option value="warning">警告 (黄色)</option>
+                                        <option value="danger">紧急 (红色)</option>
+                                        <option value="success">成功 (绿色)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3 d-flex align-items-end">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="announcementEnabled"
+                                            checked>
+                                        <label class="form-check-label" for="announcementEnabled">启用公告</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="publishAnnouncement()">发布公告</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统一凭证管理 (Unified Credential Master View) -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <h5 class="mb-0">凭证管理中心</h5>
+                            <span id="credentialCountBadge" class="badge bg-secondary">0</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-success btn-sm me-2" onclick="openUploadModal()">📤 导入凭证</button>
+                            <button class="btn btn-primary btn-sm" onclick="loadAllCredentials()">刷新列表</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- 搜索和过滤工具栏 -->
+                        <div class="row mb-3 g-2">
+                            <div class="col-md-4">
+                                <input type="text" id="credSearchInput" class="form-control"
+                                    placeholder="搜索文件名、归属或ID..." onkeyup="filterCredentials()">
+                            </div>
+                            <div class="col-md-2">
+                                <select id="credOwnerFilter" class="form-select" onchange="filterCredentials()">
+                                    <option value="all">所有归属</option>
+                                    <option value="Global">仅 Global</option>
+                                    <option value="User">仅 User</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select id="credStatusFilter" class="form-select" onchange="filterCredentials()">
+                                    <option value="all">所有状态</option>
+                                    <option value="healthy">健康 (Healthy)</option>
+                                    <option value="error">报错 (Error)</option>
+                                    <option value="disabled">禁用 (Disabled)</option>
+                                </select>
+                            </div>
+                            <!-- 预留导出/导入按钮 -->
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-outline-primary btn-sm me-1" onclick="openImportModal()">📥
+                                    导入备份</button>
+                                <button class="btn btn-outline-success btn-sm" onclick="exportSelectedCredentials()"
+                                    id="btnExportSelected" disabled>📦 导出选中</button>
+                            </div>
+                        </div>
+
+                        <!-- 批量操作栏 -->
+                        <div class="mb-3 p-2 bg-light rounded d-flex align-items-center gap-3" id="batchActionBar">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAllCreds"
+                                    onchange="toggleSelectAllCreds()">
+                                <label class="form-check-label" for="selectAllCreds">全选</label>
+                            </div>
+                            <span class="badge bg-secondary" id="selectedCredCount">已选 0 项</span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-success" onclick="batchCredAction('enable')" id="btnBatchEnable"
+                                    disabled>✅ 批量启用</button>
+                                <button class="btn btn-warning" onclick="batchCredAction('disable')"
+                                    id="btnBatchDisable" disabled>🚫 批量禁用</button>
+                                <button class="btn btn-danger" onclick="batchCredAction('delete')" id="btnBatchDelete"
+                                    disabled>🗑 批量删除</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30px;"><input type="checkbox" id="selectAllCredsHeader"
+                                                onchange="toggleSelectAllCreds()"></th>
+                                        <th>文件名</th>
+                                        <th>归属</th>
+                                        <th>状态</th>
+                                        <th>调用量(24h)</th>
+                                        <th>健康指标</th>
+                                        <th>最后成功</th>
+                                        <th>操作</th>
+                                        <th>调试</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allCredsTableBody">
+                                    <!-- 凭证列表 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-muted small mt-2">
+                            显示 <span id="visibleCredCount">0</span> / <span id="totalCredCount">0</span> 个凭证
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 模态框：重置密码 -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>重置用户密码</h3>
+                <span class="close" onclick="closeModal('resetPasswordModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>正在重置用户 <span id="resetPwdUsername" style="font-weight: bold;"></span> 的密码</p>
+                <div class="form-group">
+                    <label>新密码:</label>
+                    <input type="password" id="adminNewPassword" class="form-control" placeholder="输入新密码">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeModal('resetPasswordModal')">取消</button>
+                    <button class="btn btn-primary" onclick="confirmResetPassword()">确认重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：查看凭证 -->
+    <div id="viewCredsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>用户凭证列表</h3>
+                <span class="close" onclick="closeModal('viewCredsModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>用户: <span id="viewCredsUsername" style="font-weight: bold;"></span></p>
+                <div id="credsList" style="max-height: 400px; overflow-y: auto;">
+                    <!-- 凭证列表内容 -->
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="closeModal('viewCredsModal')">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：查看使用统计 -->
+    <div id="viewUsageModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>用户使用统计</h3>
+                <span class="close" onclick="closeModal('viewUsageModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>用户: <span id="viewUsageUsername" style="font-weight: bold;"></span></p>
+                <div id="usageList" style="max-height: 400px; overflow-y: auto;">
+                    <!-- 统计内容 -->
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="closeModal('viewUsageModal')">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：导入凭证备份 -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📥 导入凭证备份</h3>
+                <span class="close" onclick="closeModal('importModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-3">
+                    <label>选择备份文件 (.gcli):</label>
+                    <input type="file" id="importFile" class="form-control" accept=".gcli">
+                </div>
+                <div class="form-group mb-3">
+                    <label>解密密码:</label>
+                    <input type="password" id="importPassword" class="form-control" placeholder="输入备份时设置的密码">
+                </div>
+                <div class="form-group mb-3">
+                    <label>导入到用户 (可选):</label>
+                    <select id="importTargetUser" class="form-select">
+                        <option value="">保持原归属</option>
+                        <!-- 用户列表将动态填充 -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeModal('importModal')">取消</button>
+                    <button class="btn btn-primary" onclick="importCredentials()">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：导出凭证 -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📦 导出凭证备份</h3>
+                <span class="close" onclick="closeModal('exportModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>即将导出 <span id="exportCredCount" class="fw-bold">0</span> 个凭证</p>
+                <div class="form-group mb-3">
+                    <label>加密密码 (至少4位):</label>
+                    <input type="password" id="exportPassword" class="form-control" placeholder="设置备份密码">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeModal('exportModal')">取消</button>
+                    <button class="btn btn-success" onclick="doExportCredentials()">导出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：迁移凭证 -->
+    <div id="migrateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>➡️ 迁移凭证</h3>
+                <span class="close" onclick="closeModal('migrateModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>正在迁移凭证: <span id="migrateFilename" class="fw-bold font-monospace"></span></p>
+                <div class="form-group mb-3">
+                    <label>目标用户:</label>
+                    <select id="migrateTargetUser" class="form-select">
+                        <option value="global">Global (公共)</option>
+                        <!-- 用户列表将动态填充 -->
+                    </select>
+                </div>
+                <div class="alert alert-warning small">
+                    ⚠️ 迁移后，原用户将无法访问该凭证！
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeModal('migrateModal')">取消</button>
+                    <button class="btn btn-primary" onclick="doMigrateCredential()">确认迁移</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('gcli_token');
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        async function checkAuth() {
+            const token = localStorage.getItem('gcli_token');
+            const role = localStorage.getItem('gcli_role');
+
+            if (!token || role !== 'admin') {
+                window.location.href = '/';
+                return;
+            }
+
+            document.getElementById('currentUserDisplay').textContent = `管理员: ${localStorage.getItem('gcli_username') || 'Admin'}`;
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) throw new Error('加载用户失败');
+
+                const users = await response.json();
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = '';
+
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    const createdDate = new Date(user.created_at * 1000).toLocaleString();
+                    const statusBadge = user.disabled ? '<span class="badge bg-danger">禁用</span>' : '<span class="badge bg-success">正常</span>';
+                    tr.innerHTML = `
+                        <td><small class="text-muted">${user.id}</small></td>
+                        <td>${user.username}</td>
+                        <td><span class="badge bg-${user.role === 'admin' ? 'danger' : 'info'} badge-role">${user.role}</span></td>
+                        <td>${user.quota_daily === 0 ? '无限制' : user.quota_daily}</td>
+                        <td>${statusBadge}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                             <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="showResetPasswordModal('${user.id}', '${user.username}')">改密</button>
+                                <button class="btn btn-outline-info" onclick="showUserCredentials('${user.id}', '${user.username}')">凭证</button>
+                                <button class="btn btn-outline-secondary" onclick="showUserUsage('${user.id}', '${user.username}')">统计</button>
+                                <button class="btn btn-outline-warning" onclick="showEditUserModal('${user.id}', '${user.username}', ${user.quota_daily}, ${user.disabled})">编辑</button>
+                                <button class="btn btn-outline-dark" onclick="impersonateUser('${user.id}', '${user.username}')">模拟</button>
+                                <button class="btn btn-outline-danger" onclick="deleteUser('${user.id}', '${user.username}')">删除</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        /* --- Modal & Action Functions --- */
+        let currentUserId = null;
+
+        function openModal(id) {
+            document.getElementById(id).style.display = 'block';
+            // Add dark mode class if body is dark mode
+            if (document.body.classList.contains('dark-mode')) {
+                document.getElementById(id).querySelector('.modal-content').classList.add('dark-mode');
+            } else {
+                document.getElementById(id).querySelector('.modal-content').classList.remove('dark-mode');
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        // --- Delete User ---
+        async function deleteUser(userId, username) {
+            if (username === 'admin') {
+                alert('无法删除默认管理员账户');
+                return;
+            }
+            if (!confirm(`确定要删除用户 "${username}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) throw new Error('删除失败');
+
+                alert('用户已删除');
+                loadUsers();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // --- Reset Password ---
+        function showResetPasswordModal(userId, username) {
+            currentUserId = userId;
+            document.getElementById('resetPwdUsername').textContent = username;
+            document.getElementById('adminNewPassword').value = '';
+            openModal('resetPasswordModal');
+        }
+
+        async function confirmResetPassword() {
+            if (!currentUserId) return;
+            const newPassword = document.getElementById('adminNewPassword').value;
+            if (!newPassword) {
+                alert('请输入新密码');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${currentUserId}/password`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+
+                if (!response.ok) throw new Error('重置失败');
+
+                alert('密码重置成功');
+                closeModal('resetPasswordModal');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // --- Edit User ---
+        function showEditUserModal(userId, username, quotaDaily, isDisabled) {
+            currentUserId = userId;
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editQuotaDaily').value = quotaDaily;
+            document.getElementById('editUserDisabled').checked = isDisabled;
+            openModal('editUserModal');
+        }
+
+        async function saveUserStatus() {
+            if (!currentUserId) return;
+            const quotaDaily = parseInt(document.getElementById('editQuotaDaily').value);
+            const isDisabled = document.getElementById('editUserDisabled').checked;
+
+            if (isNaN(quotaDaily) || quotaDaily < 0) {
+                alert('每日配额必须是非负整数');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${currentUserId}/status`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        quota_daily: quotaDaily,
+                        disabled: isDisabled
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || '更新用户失败');
+                }
+
+                alert('用户设置已更新');
+                closeModal('editUserModal');
+                loadUsers(); // Refresh user list
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function impersonateUser(userId, username) {
+            if (!confirm(`确定要模拟用户 "${username}" 登录吗？\n这将生成一个临时 Token。`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${userId}/impersonate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) throw new Error('模拟登录失败');
+
+                const result = await response.json();
+                const token = result.token;
+
+                // Show in a prompt for easy copying
+                prompt(`模拟登录成功！\n请复制以下 Token 使用 (User: ${username}):`, token);
+
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        // --- View Credentials ---
+        async function showUserCredentials(userId, username) {
+            document.getElementById('viewCredsUsername').textContent = username;
+            const listDiv = document.getElementById('credsList');
+            listDiv.innerHTML = '<p>加载中...</p>';
+            openModal('viewCredsModal');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${userId}/credentials`, {
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('加载凭证失败');
+
+                const creds = await response.json();
+                if (creds.length === 0) {
+                    listDiv.innerHTML = '<p class="text-muted">无凭证</p>';
+                } else {
+                    let html = '<ul class="list-group">';
+                    creds.forEach(c => {
+                        // Clean up filename display
+                        const displayName = c.replace(`u_${userId}_`, '');
+                        html += `<li class="list-group-item">${displayName} <small class="text-muted">(${c})</small></li>`;
+                    });
+                    html += '</ul>';
+                    listDiv.innerHTML = html;
+                }
+            } catch (error) {
+                listDiv.innerHTML = `<p class="text-danger">加载失败: ${error.message}</p>`;
+            }
+        }
+
+        // --- View Usage ---
+        async function showUserUsage(userId, username) {
+            document.getElementById('viewUsageUsername').textContent = username;
+            const listDiv = document.getElementById('usageList');
+            listDiv.innerHTML = '<p>加载中...</p>';
+            openModal('viewUsageModal');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${userId}/usage`, {
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('加载统计失败');
+
+                const usage = await response.json();
+                const files = Object.keys(usage);
+
+                if (files.length === 0) {
+                    listDiv.innerHTML = '<div class="alert alert-secondary">该用户暂无使用记录</div>';
+                } else {
+                    const userStatsKey = `USER_stats_${userId}`;
+                    let userDirectCalls = 0;
+                    let credentialTotalCalls = 0;
+                    let credentialFiles = [];
+
+                    files.forEach(f => {
+                        if (f === userStatsKey) {
+                            userDirectCalls = (usage[f].calls_24h || 0);
+                        } else {
+                            credentialTotalCalls += (usage[f].calls_24h || 0);
+                            credentialFiles.push(f);
+                        }
+                    });
+
+                    // If userDirectCalls is present, use it. Otherwise fallback to credentialTotalCalls.
+                    // Or prioritize showing "User Calls" if > 0.
+                    const displayTotal = userDirectCalls > 0 ? userDirectCalls : credentialTotalCalls;
+                    const isDirect = userDirectCalls > 0;
+
+                    // Build Summary + Table
+                    let html = `
+                        <div class="stats-summary mb-3" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0d6efd;">
+                            <h5 style="margin: 0; color: #0d6efd;">用户实际调用 (24h): <strong>${displayTotal}</strong>${isDirect ? '' : ' (估算)'}</h5>
+                            <p style="margin: 5px 0 0; color: #6c757d; font-size: 0.9em;">
+                                <span>凭证总消耗: ${credentialTotalCalls}</span> | 
+                                <span>活跃凭证数: ${credentialFiles.length}</span>
+                            </p>
+                        </div>
+                        <h6 class="mb-2">凭证详细调用情况:</h6>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead style="position: sticky; top: 0; background: white;">
+                                    <tr>
+                                        <th>凭证文件</th>
+                                        <th style="width: 100px; text-align: right;">24h调用</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
+                    if (credentialFiles.length === 0) {
+                        html += `<tr><td colspan="2" class="text-muted text-center">无凭证使用记录</td></tr>`;
+                    } else {
+                        credentialFiles.forEach(f => {
+                            const stats = usage[f];
+                            const displayName = f.replace(`u_${userId}_`, '');
+                            html += `
+                                <tr>
+                                    <td class="text-break" title="${f}">${displayName}</td>
+                                    <td style="text-align: right; font-weight: bold;">${stats.calls_24h || 0}</td>
+                                </tr>`;
+                        });
+                    }
+
+                    html += '</tbody></table></div>';
+                    listDiv.innerHTML = html;
+                }
+            } catch (error) {
+                listDiv.innerHTML = `<div class="alert alert-danger">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config/get`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) throw new Error('加载配置失败');
+
+                const data = await response.json();
+                // 注意：后端返回结构可能是 {config: {...}, env_locked: [...]} 或直接 {...}
+                const config = data.config || data;
+
+                document.getElementById('isolationMode').checked = config.credential_isolation_mode || false;
+
+                // 检查是否被环境变量锁定
+                const locked = data.env_locked || [];
+                if (locked.includes('credential_isolation_mode')) {
+                    document.getElementById('isolationMode').disabled = true;
+                    document.getElementById('isolationMode').parentElement.title = "由环境变量控制，无法修改";
+                }
+            } catch (error) {
+                console.error('加载配置失败:', error);
+            }
+        }
+
+        async function saveConfig() {
+            try {
+                const isolationMode = document.getElementById('isolationMode').checked;
+
+                const response = await fetch(`${API_BASE}/config/save`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        config: {
+                            credential_isolation_mode: isolationMode
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || '保存失败');
+                }
+
+                alert('配置已保存');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // --- Unified Credential Management ---
+        let allCredentialsData = [];
+
+        async function loadAllCredentials() {
+            const tbody = document.getElementById('allCredsTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">加载中...</td></tr>';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/all`, {
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('加载凭证列表失败');
+
+                allCredentialsData = await response.json();
+
+                // Update total count
+                document.getElementById('totalCredCount').innerText = allCredentialsData.length;
+                document.getElementById('credentialCountBadge').innerText = allCredentialsData.length;
+
+                // Initial Render
+                filterCredentials();
+
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-danger">加载失败: ${error.message}</td></tr>`;
+                console.error(error);
+            }
+        }
+
+        function filterCredentials() {
+            const searchInput = document.getElementById('credSearchInput').value.toLowerCase();
+            const ownerFilter = document.getElementById('credOwnerFilter').value;
+            const statusFilter = document.getElementById('credStatusFilter').value;
+
+            const filteredData = allCredentialsData.filter(cred => {
+                // Search Text
+                const searchTextProps = [cred.filename, cred.owner].join(' ').toLowerCase();
+                const matchesSearch = searchTextProps.includes(searchInput);
+
+                // Owner Filter
+                let matchesOwner = true;
+                if (ownerFilter !== 'all') {
+                    if (ownerFilter === 'Global') matchesOwner = (cred.owner === 'Global');
+                    if (ownerFilter === 'User') matchesOwner = (cred.owner !== 'Global');
+                }
+
+                // Status Filter
+                let matchesStatus = true;
+                if (statusFilter !== 'all') {
+                    if (statusFilter === 'disabled') matchesStatus = cred.disabled;
+                    else if (statusFilter === 'error') matchesStatus = (!cred.disabled && cred.cooldown_until);
+                    else if (statusFilter === 'healthy') matchesStatus = (!cred.disabled && !cred.cooldown_until);
+                }
+
+                return matchesSearch && matchesOwner && matchesStatus;
+            });
+
+            renderCredentialTable_Unified(filteredData);
+        }
+
+        function renderCredentialTable_Unified(data) {
+            const tbody = document.getElementById('allCredsTableBody');
+            tbody.innerHTML = '';
+            document.getElementById('visibleCredCount').innerText = data.length;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">无匹配凭证</td></tr>';
+                return;
+            }
+
+            data.forEach(c => {
+                const tr = document.createElement('tr');
+
+                // Status Badge
+                let statusHtml = '';
+                if (c.disabled) {
+                    statusHtml += '<span class="badge bg-danger">禁用</span>';
+                } else if (c.cooldown_until) {
+                    const timeLeft = Math.max(0, Math.ceil(c.cooldown_until - Date.now() / 1000));
+                    statusHtml += `<span class="badge bg-warning text-dark" title="冷却剩余 ${timeLeft}s">冷却中</span>`;
+                } else {
+                    statusHtml += '<span class="badge bg-success">正常</span>';
+                }
+
+                // Health Info
+                let healthHtml = '<small class="text-secondary">-</small>';
+                if (c.error_codes && c.error_codes.length > 0) {
+                    const codes = c.error_codes.join(', ');
+                    healthHtml = `<small class="text-danger" title="最近错误码: ${codes}">报错 (${c.error_codes.length})</small>`;
+                } else if (c.last_success) {
+                    // Assuming last_success is timestamp? If not present, maybe healthy.
+                    healthHtml = '<small class="text-success">良好</small>';
+                }
+
+                // Last Success Formatting
+                let lastSuccessTime = '-';
+                if (c.last_success) {
+                    try {
+                        const date = new Date(c.last_success * 1000);
+                        if (!isNaN(date.getTime())) {
+                            lastSuccessTime = date.toLocaleString();
+                        } else {
+                            // Try direct isoformat
+                            const date2 = new Date(c.last_success);
+                            if (!isNaN(date2.getTime())) lastSuccessTime = date2.toLocaleString();
+                        }
+                    } catch (e) { }
+                }
+
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="cred-checkbox" data-filename="${c.filename}" onchange="updateCredSelection()"></td>
+                    <td class="text-break" style="max-width: 200px;" title="${c.filename}"><small class="font-monospace">${c.filename}</small></td>
+                    <td>${c.username ? c.username : c.owner}<br/><small class="text-muted font-monospace" style="font-size:0.7em">${c.owner_id || ''}</small><br/><small class="text-muted" style="font-size:0.65em">${c.user_email || ''}</small></td>
+                    <td>${statusHtml}</td>
+                    <td><div class="fw-bold">${c.calls_24h}</div></td>
+                     <td>${healthHtml}</td>
+                    <td><small class="text-muted">${lastSuccessTime}</small></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn ${c.disabled ? 'btn-success' : 'btn-outline-warning'}" 
+                                    onclick="toggleCredential('${c.filename}')" 
+                                    title="${c.disabled ? '启用' : '禁用'}">
+                                ${c.disabled ? '✅' : '🚫'}
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="downloadCredential('${c.filename}')" title="下载JSON">⬇</button>
+                            <button class="btn btn-outline-info" onclick="openMigrateModal('${c.filename}')" title="迁移到其他用户">➡️</button>
+                            <button class="btn btn-outline-danger" onclick="deleteCredential('${c.filename}')" title="永久删除">🗑</button>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="openDebugModal('${c.filename}')" title="在线调试/测试">🛠 测试</button>
+                        <button class="btn btn-sm btn-outline-info" onclick="viewTrace('${c.filename}')" title="查看调用追踪">追踪</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleCredential(filename) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/${filename}/toggle`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('操作失败');
+
+                loadAllCredentials(); // Refresh list to update UI
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function downloadCredential(filename) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/${filename}/download`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('gcli_token')}` }
+                });
+                if (!response.ok) throw new Error('下载失败');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteCredential(filename) {
+            if (!confirm(`确定要永久删除凭证 "${filename}" 吗？此操作无法撤销！`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/${filename}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('删除失败');
+
+                alert('凭证已删除');
+                loadAllCredentials(); // Refresh list
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // --- Advanced Credential Operations ---
+        let selectedCredentials = new Set();
+
+        function updateCredSelection() {
+            selectedCredentials.clear();
+            document.querySelectorAll('.cred-checkbox:checked').forEach(cb => {
+                selectedCredentials.add(cb.dataset.filename);
+            });
+
+            const count = selectedCredentials.size;
+            document.getElementById('selectedCredCount').textContent = `已选 ${count} 项`;
+            document.getElementById('btnBatchEnable').disabled = count === 0;
+            document.getElementById('btnBatchDisable').disabled = count === 0;
+            document.getElementById('btnBatchDelete').disabled = count === 0;
+            document.getElementById('btnExportSelected').disabled = count === 0;
+
+            // Sync header checkbox
+            const allCheckboxes = document.querySelectorAll('.cred-checkbox');
+            const allChecked = allCheckboxes.length > 0 && count === allCheckboxes.length;
+            document.getElementById('selectAllCredsHeader').checked = allChecked;
+            document.getElementById('selectAllCreds').checked = allChecked;
+        }
+
+        function toggleSelectAllCreds() {
+            const isChecked = document.getElementById('selectAllCreds').checked ||
+                document.getElementById('selectAllCredsHeader').checked;
+            document.querySelectorAll('.cred-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateCredSelection();
+        }
+
+        async function batchCredAction(action) {
+            const count = selectedCredentials.size;
+            if (count === 0) return;
+
+            const actionNames = { enable: '启用', disable: '禁用', delete: '删除' };
+            if (!confirm(`确定要批量${actionNames[action]} ${count} 个凭证吗？`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/creds/batch`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        action: action,
+                        filenames: Array.from(selectedCredentials)
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || '操作失败');
+
+                alert(`批量${actionNames[action]}完成！成功: ${result.success}, 失败: ${result.failed}`);
+                selectedCredentials.clear();
+                loadAllCredentials();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function exportSelectedCredentials() {
+            if (selectedCredentials.size === 0) {
+                alert('请先选择要导出的凭证');
+                return;
+            }
+            document.getElementById('exportCredCount').textContent = selectedCredentials.size;
+            document.getElementById('exportPassword').value = '';
+            openModal('exportModal');
+        }
+
+        async function doExportCredentials() {
+            const password = document.getElementById('exportPassword').value;
+            if (!password || password.length < 4) {
+                alert('密码至少需要4位');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/creds/export`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        filenames: Array.from(selectedCredentials),
+                        password: password
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || '导出失败');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `credentials_backup_${Date.now()}.gcli`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                closeModal('exportModal');
+                alert('导出成功！请妥善保管备份文件和密码。');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function openImportModal() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const users = await response.json();
+                    const select = document.getElementById('importTargetUser');
+                    select.innerHTML = '<option value="">保持原归属</option>';
+                    users.forEach(u => {
+                        select.innerHTML += `<option value="${u.id}">${u.username} (${u.id.substring(0, 8)}...)</option>`;
+                    });
+                }
+            } catch (e) { console.error('Failed to load users', e); }
+
+            document.getElementById('importFile').value = '';
+            document.getElementById('importPassword').value = '';
+            openModal('importModal');
+        }
+
+        async function importCredentials() {
+            const fileInput = document.getElementById('importFile');
+            const password = document.getElementById('importPassword').value;
+            const targetUser = document.getElementById('importTargetUser').value;
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('请选择备份文件');
+                return;
+            }
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('password', password);
+            if (targetUser) formData.append('target_user_id', targetUser);
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/creds/import`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('gcli_token')}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || '导入失败');
+
+                closeModal('importModal');
+                alert(`导入成功！已导入 ${result.imported} 个凭证。`);
+                loadAllCredentials();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        let migrateTargetFilename = '';
+
+        async function openMigrateModal(filename) {
+            migrateTargetFilename = filename;
+            document.getElementById('migrateFilename').textContent = filename;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const users = await response.json();
+                    const select = document.getElementById('migrateTargetUser');
+                    select.innerHTML = '<option value="global">Global (公共)</option>';
+                    users.forEach(u => {
+                        select.innerHTML += `<option value="${u.id}">${u.username} (${u.id.substring(0, 8)}...)</option>`;
+                    });
+                }
+            } catch (e) { console.error('Failed to load users', e); }
+
+            openModal('migrateModal');
+        }
+
+        async function doMigrateCredential() {
+            const targetUser = document.getElementById('migrateTargetUser').value;
+            if (!migrateTargetFilename) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/${encodeURIComponent(migrateTargetFilename)}/migrate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ target_user_id: targetUser })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || '迁移失败');
+
+                closeModal('migrateModal');
+                alert(`迁移成功！新文件名: ${result.new_filename}`);
+                loadAllCredentials();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function loadAnnouncement() {
+            try {
+                const response = await fetch(`${API_BASE}/announcement`, { headers: getAuthHeaders() });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data && data.content) {
+                    document.getElementById('announcementContent').value = data.content;
+                    document.getElementById('announcementLevel').value = data.level || 'info';
+                    document.getElementById('announcementEnabled').checked = data.enabled !== false;
+                }
+            } catch (e) {
+                console.error('Failed to load announcement', e);
+            }
+        }
+
+        async function publishAnnouncement() {
+            const content = document.getElementById('announcementContent').value;
+            const level = document.getElementById('announcementLevel').value;
+            const enabled = document.getElementById('announcementEnabled').checked;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/announcement`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({ content, level, enabled })
+                });
+
+                if (!response.ok) throw new Error('发布失败');
+                alert('公告已更新');
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function fetchLatencyStats() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/stats/latency`, {
+                    headers: getAuthHeaders()
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    renderLatencyChart(data);
+                }
+            } catch (e) {
+                console.error("Failed to fetch latency stats", e);
+            }
+        }
+
+        let latencyChartInstance = null;
+
+        function renderLatencyChart(data) {
+            const ctx = document.getElementById('latencyChart').getContext('2d');
+            if (latencyChartInstance) latencyChartInstance.destroy();
+            latencyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: '平均延迟 (ms)',
+                            data: data.avg_latency,
+                            borderColor: '#36a2eb',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'P95 延迟 (ms)',
+                            data: data.p95_latency,
+                            borderColor: '#ff6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+
+
+
+
+        // --- Upload Logic ---
+        function openUploadModal() {
+            document.getElementById('uploadCredModal').style.display = 'block';
+            populateUserSelect();
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadCredModal').style.display = 'none';
+            document.getElementById('uploadCredForm').reset();
+        }
+
+        async function populateUserSelect() {
+            const select = document.getElementById('uploadTargetUser');
+            // Keep first option (Global)
+            select.innerHTML = '<option value="Global">Global (全局共享)</option>';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const users = await response.json();
+                    users.forEach(u => {
+                        const option = document.createElement('option');
+                        option.value = u.id; // User ID
+                        option.textContent = `User: ${u.username} (ID: ${u.id})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load users for dropdown", e);
+            }
+        }
+
+        async function submitUpload() {
+            const fileInput = document.getElementById('uploadFile');
+            const userSelect = document.getElementById('uploadTargetUser');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("请选择文件");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const targetUserId = userSelect.value;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('target_user_id', targetUserId);
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('gcli_token')}` }, // No Content-Type for FormData
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || '上传失败');
+                }
+
+                alert("上传成功");
+                closeUploadModal();
+                loadAllCredentials(); // Refresh list
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('gcli_token');
+            localStorage.removeItem('gcli_role');
+            localStorage.removeItem('gcli_username');
+            window.location.href = '/';
+        }
+
+        // --- Dark Mode Logic ---
+        function toggleDarkMode() {
+            const body = document.body;
+            body.classList.toggle('dark-mode');
+            const isDark = body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeButton(isDark);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.body.classList.add('dark-mode');
+                updateThemeButton(true);
+            } else {
+                updateThemeButton(false);
+            }
+        }
+
+        function updateThemeButton(isDark) {
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) btn.innerText = isDark ? '☀️' : '🌙';
+        }
+
+        // 初始化
+        loadTheme();
+        checkAuth();
+        loadUsers();
+        loadConfig();
+        loadAllCredentials(); // Updated to Unified View
+        loadAnnouncement();
+        loadDashboard();
+
+
+        // --- Dashboard & Debug Logic ---
+        let trafficChartInstance = null;
+        let healthChartInstance = null;
+        let currentDebugFile = null;
+
+        async function loadDashboard() {
+            // Fetch Trends
+            try {
+                const trendsRes = await fetch(`${API_BASE}/admin/stats/trends`, { headers: getAuthHeaders() });
+                if (trendsRes.ok) {
+                    const data = await trendsRes.json();
+                    renderTrafficChart(data);
+                }
+            } catch (e) { console.error("Load trends failed", e); }
+
+            // Fetch Health
+            try {
+                const healthRes = await fetch(`${API_BASE}/admin/stats/health`, { headers: getAuthHeaders() });
+                if (healthRes.ok) {
+                    const data = await healthRes.json();
+                    renderHealthChart(data);
+                }
+            } catch (e) { console.error("Load health failed", e); }
+
+            // Fetch Latency
+            await fetchLatencyStats();
+
+            // Fetch Errors
+            await fetchErrorLogs();
+
+            // Fetch Audit Logs
+            await fetchAuditLogs();
+        }
+
+        let currentAuditPage = 1;
+        const auditPageSize = 100;
+
+        async function fetchAuditLogs(page = 1) {
+            currentAuditPage = page;
+            const tbody = document.getElementById('auditLogTableBody');
+
+            // Get Filter Values
+            const actionFilter = document.getElementById('auditActionFilter').value;
+            const userFilter = document.getElementById('auditUserFilter').value.trim();
+            const startDate = document.getElementById('auditStartDate').value;
+            const endDate = document.getElementById('auditEndDate').value;
+
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">加载中...</td></tr>';
+
+            // Action Mapping Configuration
+            const ACTION_MAP = {
+                'login': { text: '登录', class: 'bg-success' },
+                'login_success': { text: '登录成功', class: 'bg-success' },
+                'login_failed': { text: '登录失败', class: 'bg-danger' },
+                'upload_credential': { text: '上传凭证', class: 'bg-primary' },
+                'upload_credential_failed': { text: '上传失败', class: 'bg-danger' },
+                'delete_credential': { text: '删除凭证', class: 'bg-warning text-dark' },
+                'toggle_credential': { text: '切换凭证', class: 'bg-info text-dark' },
+                'download_credential': { text: '下载凭证', class: 'bg-secondary' },
+                'update_user_status': { text: '用户更新', class: 'bg-primary' },
+                'impersonate_user': { text: '模拟用户', class: 'bg-dark' },
+            };
+
+            try {
+                // Build URL
+                let url = `${API_BASE}/admin/audit_logs?page=${page}&limit=${auditPageSize}`;
+                if (actionFilter) url += `&action=${actionFilter}`;
+                if (userFilter) url += `&user_id=${encodeURIComponent(userFilter)}`;
+                if (startDate) url += `&start_date=${startDate}`;
+                if (endDate) url += `&end_date=${endDate}`;
+
+                const response = await fetch(url, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const data = await response.json();
+                    // Handle both new format {total, items} and legacy list
+                    const logs = Array.isArray(data) ? data : (data.items || []);
+                    const total = data.total || logs.length;
+
+                    updateAuditPagination(total);
+
+                    tbody.innerHTML = '';
+
+                    if (logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无审计记录</td></tr>';
+                        return;
+                    }
+
+                    logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        const date = new Date(log.timestamp * 1000).toLocaleString('zh-CN', { hour12: false });
+
+                        // Resolve Action Badge
+                        const actionConf = ACTION_MAP[log.action] || { text: log.action, class: 'bg-secondary' };
+
+                        // Format Details
+                        let detailsHtml = '-';
+                        if (log.details && Object.keys(log.details).length > 0) {
+                            detailsHtml = Object.entries(log.details)
+                                .map(([k, v]) => {
+                                    // Handle nested objects
+                                    let valStr = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : String(v);
+                                    // Truncate long values
+                                    if (valStr.length > 50) valStr = valStr.substring(0, 50) + '...';
+                                    return `<span class="text-muted small">${k}:</span> <span class="text-break">${valStr}</span>`;
+                                })
+                                .join('<br>');
+                        }
+
+                        // Format User ID (Show username + ID)
+                        let userDisplay = '';
+                        if (log.user_id === 'unknown') {
+                            userDisplay = '<span class="text-muted">未知</span>';
+                        } else if (log.username) {
+                            userDisplay = `<span class="fw-bold">${log.username}</span><br/><span class="text-muted font-monospace small">${log.user_id}</span>`;
+                        } else {
+                            userDisplay = `<span class="text-break font-monospace small">${log.user_id}</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td style="white-space: nowrap;">${date}</td>
+                            <td><span class="badge ${actionConf.class}">${actionConf.text}</span></td>
+                            <td>${userDisplay}</td>
+                            <td><small>${log.ip}</small></td>
+                            <td class="small" style="line-height: 1.4;">${detailsHtml}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = `<tr><td colspan="5" class="text-danger">加载失败: ${e.message}</td></tr>`;
+            }
+        }
+
+        function updateAuditPagination(total) {
+            const start = (currentAuditPage - 1) * auditPageSize + 1;
+            const end = Math.min(start + auditPageSize - 1, total);
+            const totalPages = Math.ceil(total / auditPageSize);
+
+            document.getElementById('auditLogInfo').innerText =
+                total > 0 ? `显示 ${start}-${end} 条，共 ${total} 条` : '无记录';
+
+            document.getElementById('auditPageBtn').innerText = currentAuditPage;
+            document.getElementById('auditPrevBtn').disabled = currentAuditPage <= 1;
+            document.getElementById('auditNextBtn').disabled = currentAuditPage >= totalPages;
+        }
+
+        function changeAuditPage(delta) {
+            fetchAuditLogs(currentAuditPage + delta);
+        }
+
+        async function exportAuditLogs() {
+            const actionFilter = document.getElementById('auditActionFilter').value;
+            const userFilter = document.getElementById('auditUserFilter').value.trim();
+            const startDate = document.getElementById('auditStartDate').value;
+            const endDate = document.getElementById('auditEndDate').value;
+
+            let url = `${API_BASE}/admin/audit_logs/export?`;
+            if (actionFilter) url += `action=${actionFilter}&`;
+            if (userFilter) url += `user_id=${encodeURIComponent(userFilter)}&`;
+            if (startDate) url += `start_date=${startDate}&`;
+            if (endDate) url += `end_date=${endDate}`;
+
+            try {
+                const response = await fetch(url, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } else {
+                    const errorText = await response.text();
+                    alert(`导出失败 (${response.status}): ${errorText}`);
+                }
+            } catch (e) {
+                alert('导出出错: ' + e.message);
+            }
+        }
+
+        async function fetchErrorLogs() {
+            const tbody = document.getElementById('errorLogTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">加载中...</td></tr>';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/stats/errors?limit=50`, { headers: getAuthHeaders() });
+                if (response.ok) {
+                    const logs = await response.json();
+                    tbody.innerHTML = '';
+
+                    if (logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无报错记录</td></tr>';
+                        return;
+                    }
+
+                    logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        const date = new Date(log.timestamp * 1000).toLocaleString();
+                        tr.innerHTML = `
+                            <td>${date}</td>
+                            <td class="text-break" style="max-width: 150px;">${log.credential}</td>
+                            <td>${log.user_id}</td>
+                            <td><span class="badge ${log.status_code >= 500 ? 'bg-danger' : 'bg-warning'}">${log.status_code}</span></td>
+                            <td class="text-break" style="max-width: 400px;">${log.error_msg}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-danger">加载失败: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderTrafficChart(data) {
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            if (trafficChartInstance) trafficChartInstance.destroy();
+            trafficChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'API Calls',
+                        data: data.data,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        fill: true,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        let ownershipChartInstance = null;
+
+        function renderHealthChart(stats) {
+            // Unpack stats (now nested)
+            const health = stats.health_stats || {};
+            const ownership = stats.ownership_stats || {};
+
+            // Render Health Chart
+            const ctxH = document.getElementById('healthChart').getContext('2d');
+            if (healthChartInstance) healthChartInstance.destroy();
+            healthChartInstance = new Chart(ctxH, {
+                type: 'doughnut',
+                data: {
+                    labels: ['健康', '报错', '禁用'],
+                    datasets: [{
+                        data: [health.healthy, health.error, health.disabled],
+                        backgroundColor: ['#198754', '#ffc107', '#6c757d']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Render Ownership Chart
+            const ctxO = document.getElementById('ownershipChart').getContext('2d');
+            if (ownershipChartInstance) ownershipChartInstance.destroy();
+            ownershipChartInstance = new Chart(ctxO, {
+                type: 'pie',
+                data: {
+                    labels: ['用户凭证', '全局凭证'],
+                    datasets: [{
+                        data: [ownership.user, ownership.global],
+                        backgroundColor: ['#6610f2', '#0dcaf0']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function openDebugModal(filename) {
+            currentDebugFile = filename;
+            document.getElementById('debugTargetName').innerText = filename;
+            document.getElementById('debugOutput').innerText = "等待测试指令...\n(点击上方按钮开始测试)";
+            document.getElementById('debugStatus').className = 'float-end badge me-2 bg-secondary';
+            document.getElementById('debugStatus').innerText = 'Status: -';
+            document.getElementById('debugLatency').innerText = 'Latency: -';
+            openModal('debugModal');
+        }
+
+        function closeDebugModal() {
+            closeModal('debugModal');
+        }
+
+        async function runDebugTest() {
+            if (!currentDebugFile) return;
+            const output = document.getElementById('debugOutput');
+            output.innerText = "Sending request to Google API via Proxy...";
+
+            const selectedModel = document.getElementById('testModelSelect').value;
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify({ filename: currentDebugFile, model: selectedModel })
+                });
+
+                const result = await response.json();
+
+                document.getElementById('debugLatency').innerText = `Latency: ${result.latency || '-'}`;
+                const statusBadge = document.getElementById('debugStatus');
+                statusBadge.innerText = `Status: ${result.status || response.status}`;
+                statusBadge.className = `float-end badge me-2 bg-${result.success ? 'success' : 'danger'}`;
+
+                output.innerText = result.log || JSON.stringify(result, null, 2);
+            } catch (e) {
+                output.innerText = `Error: ${e.message}`;
+            }
+        }
+
+        // --- View Trace ---
+        async function viewTrace(filename) {
+            document.getElementById('traceTargetName').innerText = filename;
+            const tbody = document.getElementById('traceTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">加载中...</td></tr>';
+            openModal('traceModal');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/credentials/${filename}/trace?limit=50`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (response.ok) {
+                    const logs = await response.json();
+                    tbody.innerHTML = '';
+                    if (logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无调用记录</td></tr>';
+                        return;
+                    }
+
+                    logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        const date = new Date(log.timestamp * 1000).toLocaleString();
+                        const statusClass = log.status_code === 200 ? 'success' : 'danger';
+                        tr.innerHTML = `
+                            <td>${date}</td>
+                            <td>${log.user_id}</td>
+                            <td>${log.model}</td>
+                            <td>${log.latency} ms</td>
+                            <td><span class="badge bg-${statusClass}">${log.status_code}</span></td>
+                            <td><small class="text-muted" title="${log.error || ''}">${log.error ? log.error.substring(0, 30) + '...' : '-'}</small></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    throw new Error('加载失败');
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const debugModal = document.getElementById('debugModal');
+            const uploadModal = document.getElementById('uploadCredModal');
+            const resetPasswordModal = document.getElementById('resetPasswordModal');
+            const viewCredsModal = document.getElementById('viewCredsModal');
+            const viewUsageModal = document.getElementById('viewUsageModal');
+            const editUserModal = document.getElementById('editUserModal');
+            const traceModal = document.getElementById('traceModal');
+
+            if (event.target == debugModal) {
+                debugModal.style.display = "none";
+            }
+            if (event.target == uploadModal) {
+                uploadModal.style.display = "none";
+            }
+            if (event.target == resetPasswordModal) {
+                resetPasswordModal.style.display = "none";
+            }
+            if (event.target == viewCredsModal) {
+                viewCredsModal.style.display = "none";
+            }
+            if (event.target == viewUsageModal) {
+                viewUsageModal.style.display = "none";
+            }
+            if (event.target == editUserModal) {
+                editUserModal.style.display = "none";
+            }
+            if (event.target == traceModal) {
+                traceModal.style.display = "none";
+            }
+        }
+    </script>
+    <!-- Debug Modal -->
+    <div id="debugModal" class="modal">
+        <div class="modal-content" style="width: 70%; max-width: 800px;">
+            <div class="modal-header">
+                <h5>凭证调试控制台</h5>
+                <span class="close" onclick="closeDebugModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label>测试凭证: <span id="debugTargetName" class="fw-bold"></span></label>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">选择测试模型:</label>
+                    <select id="testModelSelect" class="form-select">
+                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="gemini-3-pro-preview">gemini-3-pro-preview</option>
+                    </select>
+                </div>
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-primary" onclick="runDebugTest()">▶ 发起测试请求 (Hello World)</button>
+                </div>
+                <div class="card bg-dark text-light">
+                    <div class="card-header border-secondary">
+                        调试日志
+                        <span id="debugLatency" class="float-end badge bg-secondary">Latency: -</span>
+                        <span id="debugStatus" class="float-end badge me-2 bg-secondary">Status: -</span>
+                    </div>
+                    <div class="card-body font-monospace"
+                        style="height: 300px; overflow-y: auto; white-space: pre-wrap;" id="debugOutput">等待测试指令...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Upload Modal -->
+    <div id="uploadCredModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>上传凭证 (JSON)</h5>
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="uploadCredForm">
+                    <div class="mb-3">
+                        <label class="form-label">选择凭证文件 (.json)</label>
+                        <input type="file" id="uploadFile" class="form-control" accept=".json" required>
+                        <div class="form-text">支持 Google Service Account Key JSON 文件。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">归属用户</label>
+                        <select id="uploadTargetUser" class="form-select">
+                            <option value="Global">Global (全局共享)</option>
+                            <!-- Users will be populated here -->
+                        </select>
+                        <div class="form-text">"Global" 表示所有用户可用（除非开启隔离模式）。指定用户则仅该用户可用。</div>
+                    </div>
+                </form>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeUploadModal()">取消</button>
+                    <button class="btn btn-primary" onclick="submitUpload()">上传</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>编辑用户</h5>
+                <span class="close" onclick="closeModal('editUserModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="editUsername" readonly disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">每日配额 (0 = 无限制)</label>
+                        <input type="number" class="form-control" id="editQuotaDaily" min="0">
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="editUserDisabled">
+                        <label class="form-check-label" for="editUserDisabled">禁用账户 (Ban)</label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeModal('editUserModal')">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveUserStatus()">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Trace Modal -->
+    <div id="traceModal" class="modal">
+        <div class="modal-content" style="width: 80%;">
+            <div class="modal-header">
+                <h5>调用追踪: <span id="traceTargetName"></span></h5>
+                <span class="close" onclick="closeModal('traceModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-sm table-hover small">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>用户</th>
+                                <th>模型</th>
+                                <th>延迟</th>
+                                <th>状态</th>
+                                <th>错误</th>
+                            </tr>
+                        </thead>
+                        <tbody id="traceTableBody">
+                            <!-- Logs -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

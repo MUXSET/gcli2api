@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  gcli2api:
+    build: .
+    container_name: gcli2api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-7861}:${PORT:-7861}"
+    environment:
+      # Multi-user authentication is now required
+      # Users must register/login to get their personal API Key (sk-gcli-xxx)
+      # Legacy PASSWORD authentication has been removed
+
+      # Server configuration
+      - PORT=${PORT:-7861}
+      - HOST=0.0.0.0
+      # Optional: Google credentials from environment
+      # - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
+
+      # Optional: Logging configuration
+      # - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Optional: Redis configuration (for distributed storage)
+      # - REDIS_URI=${REDIS_URI}
+      # - REDIS_DATABASE=${REDIS_DATABASE:-0}
+
+      # Optional: MongoDB configuration (for distributed storage)
+      # - MONGODB_URI=${MONGODB_URI}
+      # - MONGODB_DATABASE=${MONGODB_DATABASE:-gcli2api}
+
+      # Optional: PostgreSQL configuration (for distributed storage)
+      # - POSTGRES_DSN=${POSTGRES_DSN}
+
+      # Optional: MySQL configuration (for distributed storage)
+      # - MYSQL_URI=${MYSQL_URI}
+
+      # Optional: Proxy configuration
+      # - PROXY=${PROXY}
+    volumes:
+      - ./creds:/app/creds
+      - ./data:/app/data
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-7861}/keepalive', timeout=5)" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Example with Redis for distributed storage
+#  redis:
+#    image: redis:7-alpine
+#    container_name: gcli2api-redis
+#    restart: unless-stopped
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis_data:/data
+#    command: redis-server --appendonly yes
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "ping"]
+#      interval: 10s
+#      timeout: 3s
+#      retries: 3
+
+# Example with MongoDB for distributed storage
+#  mongodb:
+#    image: mongo:7
+#    container_name: gcli2api-mongodb
+#    restart: unless-stopped
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+#      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+#    ports:
+#      - "27017:27017"
+#    volumes:
+#      - mongodb_data:/data/db
+#    healthcheck:
+#      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 3
+
+#volumes:
+#  redis_data:
+#  mongodb_data:

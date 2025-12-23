@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCLI2API 控制面板</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            /* Indigo 600 */
+            --primary-hover: #4338CA;
+            /* Indigo 700 */
+            --secondary: #6B7280;
+            /* Gray 500 */
+            --bg: #F3F4F6;
+            /* Gray 100 */
+            --surface: #FFFFFF;
+            --text-main: #111827;
+            /* Gray 900 */
+            --text-secondary: #4B5563;
+            /* Gray 600 */
+            --border: #E5E7EB;
+            /* Gray 200 */
+            --success: #10B981;
+            /* Emerald 500 */
+            --error: #EF4444;
+            /* Red 500 */
+            --warning: #F59E0B;
+            /* Amber 500 */
+            --info: #3B82F6;
+            /* Blue 500 */
+            --radius: 0.75rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --font-main: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --transition: all 0.2s ease;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .flex.justify-between.items-center.mb-8 {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .flex.gap-4 {
+                flex-wrap: wrap;
+                width: 100%;
+            }
+
+            .flex.gap-4>* {
+                flex: 1;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .tabs {
+                padding: 0.25rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .tab {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8125rem;
+            }
+
+            .card {
+                padding: 1.25rem;
+            }
+
+            .btn {
+                width: 100%;
+                padding: 0.625rem;
+            }
+
+            /* Adjust button groups in cards */
+            .flex.gap-4 .btn {
+                flex: 1 1 auto;
+                /* Allow buttons to grow/shrink */
+                min-width: 0;
+                /* Prevent overflow */
+            }
+
+            /* Fix specific button groups that shouldn't wrap awkwardly */
+            .flex.justify-between .flex.gap-2 {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+
+            /* Credential List Items */
+            .list-item>div.flex {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .list-item .cred-actions {
+                flex-wrap: wrap;
+                margin-top: 0.5rem;
+            }
+
+            .list-item .cred-actions .btn {
+                width: auto;
+                flex: 1;
+            }
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Helpers */
+        .hidden {
+            display: none !important;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0 0 1.5rem 0;
+            letter-spacing: -0.025em;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0 0 1rem 0;
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0 0 0.75rem 0;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            line-height: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-outline-danger {
+            background-color: transparent;
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .btn-outline-danger:hover {
+            background-color: #FEF2F2;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: #F9FAFB;
+            border-color: #D1D5DB;
+        }
+
+        /* Inputs */
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        input[type="url"],
+        select {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background-color: #F9FAFB;
+            font-size: 0.875rem;
+            color: var(--text-main);
+            transition: var(--transition);
+            box-sizing: border-box;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        /* Login Form */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+        }
+
+        .login-box {
+            background: white;
+            padding: 3rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .tab:hover {
+            background-color: #EEF2FF;
+            color: var(--primary);
+        }
+
+        .tab.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Status Messages */
+        #statusSection {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 50;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .status-msg {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--info);
+            font-size: 0.875rem;
+            pointer-events: auto;
+            animation: slideIn 0.3s ease;
+        }
+
+        .status-msg.success {
+            border-color: var(--success);
+        }
+
+        .status-msg.error {
+            border-color: var(--error);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+
+        .badge-warning {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-error {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .badge-info {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        /* File List & Creds */
+        .list-item {
+            background: #F9FAFB;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: var(--transition);
+        }
+
+        .list-item:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+            background: white;
+        }
+
+        .cred-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .cred-actions button {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #F9FAFB;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #EEF2FF;
+        }
+
+        /* Config Groups */
+        .config-group {
+            background: #F9FAFB;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-group label {
+            display: block;
+            font-weight: 500;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-val {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Loading */
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+
+        pre {
+            background: #1F2937;
+            color: #F3F4F6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: ui-monospace, monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 登录界面 -->
+    <div id="loginSection" class="login-container">
+        <div class="login-box">
+            <h1 class="text-center" style="text-align: center; margin-bottom: 2rem;" id="authTitle">欢迎回来</h1>
+            <p class="text-secondary" style="text-align: center; margin-bottom: 2rem;" id="authSubtitle">请登录以继续管理您的服务
+            </p>
+
+            <div class="mb-4">
+                <input type="text" id="loginUsername" placeholder="用户名" />
+            </div>
+            <div class="mb-4">
+                <input type="password" id="loginPassword" placeholder="密码" onkeypress="handlePasswordEnter(event)" />
+            </div>
+            <button class="btn" style="width: 100%; height: 3rem; font-size: 1rem;" id="authBtn"
+                onclick="handleAuth()">登录</button>
+
+            <div class="mt-4" style="text-align: center;">
+                <a href="#" class="text-sm" style="color: var(--primary); text-decoration: none;" id="authToggleLink"
+                    onclick="toggleAuthMode()">注册新账号</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div id="mainSection" class="container hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h1 style="margin: 0; font-size: 1.5rem;">控制台</h1>
+                <p class="text-secondary text-sm" style="margin: 0.25rem 0 0 0;">管理您的 API 凭证与配置</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-sm text-secondary">
+                    <span id="profileUsername" class="font-bold text-main" style="color: var(--text-main);">User</span>
+                    <span id="profileRoleBadge" class="badge badge-info" style="margin-left: 0.5rem;">Role</span>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()" style="padding: 0.25rem 0.75rem;">退出</button>
+                <a href="/admin" id="adminPanelLink" class="btn btn-secondary hidden"
+                    style="padding: 0.25rem 0.75rem; text-decoration: none;">后台管理</a>
+            </div>
+        </div>
+
+        <!-- System Announcement -->
+        <div id="systemAnnouncement" class="status-msg hidden mb-4"
+            style="position: static; width: auto; border-left: 4px solid var(--info); animation: none;">
+            <strong>📢 公告：</strong> <span id="announcementText"></span>
+        </div>
+
+        <!-- Navigation -->
+        <div class="tabs">
+            <button class="tab active" data-tab="oauth" onclick="switchTab('oauth')">OAuth 认证</button>
+            <button class="tab" data-tab="upload" onclick="switchTab('upload')">上传凭证</button>
+            <button class="tab" data-tab="envload" onclick="switchTab('envload')">环境变量</button>
+            <button class="tab" data-tab="manage" onclick="switchTab('manage')">凭证管理</button>
+            <button class="tab" data-tab="usage" onclick="switchTab('usage')">使用统计</button>
+            <button class="tab" data-tab="config" onclick="switchTab('config')">系统配置</button>
+            <button class="tab" data-tab="profile" onclick="switchTab('profile')">个人中心</button>
+            <button class="tab" data-tab="logs" onclick="switchTab('logs')">实时日志</button>
+        </div>
+
+        <!-- Content -->
+        <div class="card" style="min-height: 500px;">
+
+            <!-- OAuth Tab -->
+            <div id="oauthTab" class="tab-content active">
+                <div class="flex justify-between items-center mb-4">
+                    <h3>OAuth 授权</h3>
+                    <div class="badge badge-success">自动启用 API 服务</div>
+                </div>
+                <p class="text-secondary mb-4">通过 Google OAuth 安全地授权您的应用访问 Gemini API。</p>
+
+                <!-- Project ID Config -->
+                <div class="config-group">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="toggleProjectIdSection()"
+                        style="cursor: pointer;">
+                        <span class="font-bold">✨ 高级：自定义 Project ID</span>
+                        <span id="projectIdToggleIcon">▼</span>
+                    </div>
+                    <div id="projectIdSection" class="hidden mt-4 pt-4 border-t"
+                        style="border-top-color: var(--border);">
+                        <label>Google Cloud Project ID (可选)</label>
+                        <input type="text" id="projectId" placeholder="留空则自动检测..." />
+                        <p class="text-sm text-secondary mt-2">如果不确定，请保持为空，系统将尝试自动检测。</p>
+                    </div>
+                </div>
+
+                <!-- Batch Mode -->
+                <div class="bs-callout"
+                    style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="getAllProjectsCreds"
+                            style="width: 1.25rem; height: 1.25rem; accent-color: var(--success);"
+                            onchange="handleGetAllProjectsChange()">
+                        <label for="getAllProjectsCreds" class="font-bold"
+                            style="color: #15803D; cursor: pointer;">启用批量并发认证模式</label>
+                    </div>
+                    <div id="allProjectsNote" class="hidden mt-2 text-sm" style="color: #166534; margin-left: 2rem;">
+                        授权后将自动扫描并为当前账号下所有可用项目生成凭证。
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <button class="btn" id="getAuthBtn" onclick="startAuth()"
+                        style="height: 3rem; padding: 0 2rem; font-size: 1rem;">获取认证链接</button>
+                </div>
+
+                <!-- Auth Result Section -->
+                <div id="authUrlSection" class="hidden animate-fade-in">
+                    <div class="config-group">
+                        <label>认证链接</label>
+                        <div
+                            style="background: white; padding: 1rem; border: 1px solid var(--border); border-radius: 0.5rem; margin-bottom: 1rem; word-break: break-all;">
+                            <a id="authUrl" href="#" target="_blank"
+                                style="color: var(--primary); font-weight: 500;">点击此处打开授权页面</a>
+                        </div>
+                        <div class="text-sm text-secondary">
+                            请在新窗口中完成授权，然后复制回调地址或等待自动跳转。
+                        </div>
+                    </div>
+
+                    <!-- Callback URL Manual Input -->
+                    <div class="config-group">
+                        <div class="flex justify-between items-center cursor-pointer"
+                            onclick="toggleCallbackUrlSection()" style="cursor: pointer;">
+                            <span class="font-bold text-info" style="color: var(--info);">📡 无法自动跳转？手动输入回调 URL</span>
+                            <span id="callbackUrlToggleIcon">▼</span>
+                        </div>
+                        <div id="callbackUrlSection" class="hidden mt-4">
+                            <input type="url" id="callbackUrlInput" placeholder="粘贴 http://localhost:8080/... 完整回调链接"
+                                class="mb-4" />
+                            <button class="btn" onclick="processCallbackUrl()"
+                                style="background-color: var(--success); border-color: var(--success);">验证回调链接</button>
+                        </div>
+                    </div>
+
+                    <button class="btn" id="getCredsBtn" onclick="getCredentials()">获取凭证文件</button>
+                </div>
+
+                <div id="credentialsSection" class="hidden mt-4">
+                    <h4>认证结果</h4>
+                    <pre id="credentialsContent"></pre>
+                </div>
+            </div>
+
+            <!-- Upload Tab -->
+            <div id="uploadTab" class="tab-content">
+                <h3>批量上传</h3>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);">☁️</div>
+                    <h4 style="margin: 0;">点击或拖拽文件到此处</h4>
+                    <p class="text-secondary text-sm">支持 .json 凭证文件 或 .zip 压缩包</p>
+                </div>
+                <input type="file" id="fileInput" multiple accept=".json,.zip" class="hidden"
+                    onchange="handleFileSelect(event)" />
+
+                <div id="fileListSection" class="hidden mt-4">
+                    <h4>待上传文件</h4>
+                    <div id="fileList"></div>
+                    <div class="flex gap-4 mt-4">
+                        <button class="btn" onclick="uploadFiles()">确认上传</button>
+                        <button class="btn btn-secondary" onclick="clearFiles()">清空</button>
+                    </div>
+                </div>
+
+                <div id="uploadProgressSection" class="hidden mt-4">
+                    <div style="background: var(--bg); height: 0.5rem; border-radius: 999px; overflow: hidden;">
+                        <div id="progressFill"
+                            style="background: var(--success); width: 0%; height: 100%; transition: width 0.3s;"></div>
+                    </div>
+                    <div class="text-right text-sm text-secondary mt-1" id="progressText">0%</div>
+                </div>
+            </div>
+
+            <!-- Env Load Tab -->
+            <div id="envloadTab" class="tab-content">
+                <h3>环境变量导入</h3>
+                <div id="envStatusSection" class="config-group">
+                    <div id="envStatusLoading" class="loading-spinner"></div>
+                    <div id="envStatusContent" class="hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 style="margin: 0;">当前状态</h4>
+                            <span id="autoLoadStatus" class="badge">Checking...</span>
+                        </div>
+                        <div class="mb-4">
+                            <label>已检测到的变量</label>
+                            <pre id="envVarsList" style="margin-top: 0.5rem;">None</pre>
+                        </div>
+                        <div>
+                            <label>已导入文件数: <span id="envFilesCount" class="font-bold text-main">0</span></label>
+                            <div id="envFilesList" class="text-sm text-secondary mt-2 font-mono"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button class="btn" onclick="checkEnvCredsStatus()">刷新状态</button>
+                    <button class="btn" onclick="loadEnvCredentials()">执行导入</button>
+                    <button class="btn btn-outline-danger" onclick="clearEnvCredentials()">清除导入</button>
+                </div>
+            </div>
+
+            <!-- Manage Tab -->
+            <div id="manageTab" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3>凭证列表</h3>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary" onclick="refreshCredsStatus()">🔄 刷新</button>
+                        <button class="btn" onclick="downloadAllCreds()">📥 打包下载</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-val" id="statTotal">0</span>
+                        <span class="stat-label">总文件</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: var(--success);" id="statNormal">0</span>
+                        <span class="stat-label">正常</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: var(--secondary);" id="statDisabled">0</span>
+                        <span class="stat-label">已禁用</span>
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 style="margin: 0;">批量操作</h4>
+                        <span id="selectedCount" class="text-sm font-bold text-primary">已选 0 项</span>
+                    </div>
+                    <div class="flex gap-2 flex-wrap items-center">
+                        <div class="flex items-center mr-4">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"
+                                style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;">
+                            <label for="selectAllCheckbox" style="margin: 0;">全选</label>
+                        </div>
+                        <button class="btn" id="batchEnableBtn" onclick="batchAction('enable')" disabled>启用</button>
+                        <button class="btn btn-secondary" id="batchDisableBtn" onclick="batchAction('disable')"
+                            disabled>禁用</button>
+                        <button class="btn btn-outline-danger" id="batchDeleteBtn" onclick="batchAction('delete')"
+                            disabled>删除</button>
+                        <button class="btn btn-secondary" onclick="refreshAllEmails()">刷新邮箱</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mb-4 flex-wrap">
+                    <select id="statusFilter" onchange="applyFilters()" style="width: auto;">
+                        <option value="all">所有状态</option>
+                        <option value="normal">正常</option>
+                        <option value="disabled">禁用</option>
+                    </select>
+                    <select id="errorCodeFilter" onchange="applyFilters()" style="width: auto;">
+                        <option value="all">所有错误码</option>
+                        <option value="no-errors">无错误</option>
+                        <option value="has-errors">有错误</option>
+                    </select>
+                    <select id="pageSizeSelect" onchange="changePageSize()" style="width: auto;">
+                        <option value="20">20 / 页</option>
+                        <option value="50">50 / 页</option>
+                        <option value="100">100 / 页</option>
+                    </select>
+                    <div id="errorCodeBadges" class="flex gap-2 items-center"></div>
+                </div>
+
+                <div id="credsListSection">
+                    <div id="credsLoading" class="loading-spinner"></div>
+                    <div id="credsList"></div>
+                    <div id="paginationContainer" class="flex justify-center items-center gap-4 mt-8 hidden">
+                        <button class="btn btn-secondary" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
+                        <span id="paginationInfo" class="text-secondary text-sm"></span>
+                        <button class="btn btn-secondary" id="nextPageBtn" onclick="changePage(1)">下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Tab -->
+            <div id="usageTab" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3>使用统计</h3>
+                    <button class="btn" onclick="refreshUsageStats()">刷新数据</button>
+                </div>
+
+                <div class="stats-grid" id="usageStatsContainer">
+                    <div class="stat-card">
+                        <span class="stat-val" id="totalApiCalls">0</span>
+                        <span class="stat-label">24H 总调用</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: var(--warning);" id="activeFilesCount">0</span>
+                        <span class="stat-label">活跃文件</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: var(--info);" id="avgCallsPerFile">0</span>
+                        <span class="stat-label">平均调用/文件</span>
+                    </div>
+                </div>
+
+                <div id="usageListSection">
+                    <div id="usageLoading" class="loading-spinner"></div>
+                    <div id="usageList" class="stats-grid"
+                        style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"></div>
+                </div>
+            </div>
+
+            <!-- Config Tab -->
+            <div id="configTab" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3>系统配置</h3>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary" onclick="loadConfig()">重置</button>
+                        <button class="btn" onclick="saveConfig()">保存</button>
+                    </div>
+                </div>
+                <div id="configLoading" class="loading-spinner"></div>
+                <div id="configForm" class="hidden">
+                    <div class="config-group">
+                        <h4>服务监听</h4>
+                        <div class="flex gap-4">
+                            <div style="flex: 1;"><label>Host</label><input type="text" id="host" /></div>
+                            <div style="flex: 1;"><label>Port</label><input type="number" id="port" /></div>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h4>基础设置</h4>
+                        <div class="mb-4"><label>凭证目录</label><input type="text" id="credentialsDir" /></div>
+                        <div><label>代理服务器 (HTTP/SOCKS)</label><input type="text" id="proxy"
+                                placeholder="http://... or socks5://..." /></div>
+                    </div>
+
+                    <div class="config-group">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 style="margin: 0;">API 端点</h4>
+                            <div class="flex gap-2">
+                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+                                    onclick="useMirrorUrls()">使用镜像</button>
+                                <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+                                    onclick="restoreOfficialUrls()">恢复官方</button>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div><label>Code Assist</label><input type="text" id="codeAssistEndpoint" /></div>
+                            <div><label>OAuth Proxy</label><input type="text" id="oauthProxyUrl" /></div>
+                            <div><label>Google APIs</label><input type="text" id="googleapisProxyUrl" /></div>
+                            <div><label>Resource Manager API</label><input type="text" id="resourceManagerApiUrl" />
+                            </div>
+                            <div><label>Service Usage API</label><input type="text" id="serviceUsageApiUrl" /></div>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h4>策略控制</h4>
+                        <div class="mb-4 flex items-center gap-2">
+                            <input type="checkbox" id="autoBanEnabled" style="width: auto;">
+                            <label for="autoBanEnabled" style="margin: 0;">启用自动封禁 (Auto Ban)</label>
+                        </div>
+                        <div class="mb-4">
+                            <label>触发封禁错误码</label>
+                            <input type="text" id="autoBanErrorCodes" placeholder="400, 403" />
+                        </div>
+                        <div class="flex gap-4 mb-4">
+                            <div style="flex:1;"><label>轮换阈值 (Calls)</label><input type="number"
+                                    id="callsPerRotation" /></div>
+                            <div style="flex:1;"><label>抗截断重试 (Attempts)</label><input type="number"
+                                    id="antiTruncationMaxAttempts" /></div>
+                        </div>
+                        <div class="mb-2 flex items-center gap-2">
+                            <input type="checkbox" id="compatibilityModeEnabled" style="width: auto;">
+                            <label for="compatibilityModeEnabled" style="margin: 0;">OpenAI 兼容模式 (Flatten System
+                                Prompt)</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="returnThoughtsToFrontend" style="width: auto;">
+                            <label for="returnThoughtsToFrontend" style="margin: 0;">返回思维链 (Thinking Process)</label>
+                        </div>
+
+                        <!-- 429 Retry Configuration -->
+                        <div class="mt-4 border-t pt-4" style="border-top-color: var(--border);">
+                            <label class="font-bold mb-2 block">429 限流重试</label>
+                            <div class="mb-2 flex items-center gap-2">
+                                <input type="checkbox" id="retry429Enabled" style="width: auto;">
+                                <label for="retry429Enabled" style="margin: 0;">启用自动重试</label>
+                            </div>
+                            <div class="flex gap-4">
+                                <div style="flex:1;"><label>最大重试次数</label><input type="number"
+                                        id="retry429MaxRetries" /></div>
+                                <div style="flex:1;"><label>重试间隔 (秒)</label><input type="number" id="retry429Interval"
+                                        step="0.1" /></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Tab -->
+            <div id="profileTab" class="tab-content">
+                <h3>个人中心</h3>
+                <div class="config-group">
+                    <h4>API Key</h4>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="userApiKey" readonly style="background: #E5E7EB; color: #6B7280;" />
+                        <button class="btn" onclick="copyApiKey()">复制</button>
+                    </div>
+                    <button class="btn btn-outline-danger" onclick="regenerateApiKey()">重置 Key</button>
+                </div>
+                <div class="config-group">
+                    <h4>修改密码</h4>
+                    <div class="flex gap-2">
+                        <input type="password" id="newPassword" placeholder="输入新密码" />
+                        <button class="btn" onclick="changePassword()">确认修改</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Tab -->
+            <div id="logsTab" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3>系统日志</h3>
+                    <div class="flex gap-2">
+                        <button class="btn" onclick="connectWebSocket()">连接</button>
+                        <button class="btn btn-outline-danger" onclick="disconnectWebSocket()">断开</button>
+                        <button class="btn btn-secondary" onclick="clearLogs()">清空</button>
+                        <button class="btn btn-secondary" onclick="downloadLogs()">下载</button>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-4 text-sm text-secondary">
+                    <div id="logConnectionStatus" class="flex items-center gap-2">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--secondary);"
+                            id="statusDot"></span>
+                        <span id="connectionStatusText">未连接</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <select id="logLevelFilter" onchange="filterLogs()" style="width: auto; padding: 0.25rem;">
+                            <option value="all">所有日志</option>
+                            <option value="ERROR">ERROR</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="INFO">INFO</option>
+                        </select>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="autoScroll" checked style="width: auto;">
+                            <label for="autoScroll" style="margin: 0;">自动滚动</label>
+                        </div>
+                    </div>
+                </div>
+                <pre id="logContainer" style="height: 500px; color: #10B981;">
+                    <div id="logContent">等待连接...</div>
+                </pre>
+            </div>
+
+        </div> <!-- End Content Card -->
+
+        <div id="statusSection"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+
+        // Global State
+        let currentProjectId = '';
+        let authInProgress = false;
+        let uploadSelectedFiles = [];
+        let authToken = '';
+        let credsData = {};
+        let filteredCredsData = {};
+        let currentPage = 1;
+        let pageSize = 20;
+        let currentFilter = 'all';
+        let currentErrorCodeFilter = 'all';
+        let selectedCredFiles = new Set();
+        let availableErrorCodes = new Set();
+        let statsData = { total: 0, normal: 0, disabled: 0 };
+        let usageStatsData = {};
+        let logWebSocket = null;
+        let allLogs = [];
+        let filteredLogs = [];
+        let currentLogFilter = 'all';
+        let isLoginMode = true;
+        let envLockedFields = new Set();
+
+        // --- UI Helpers ---
+        function showStatus(message, type = 'info') {
+            const container = document.getElementById('statusSection');
+            if (!container) return alert(message);
+
+            const div = document.createElement('div');
+            div.className = `status-msg ${type}`;
+            div.textContent = message;
+
+            container.appendChild(div);
+            // Auto remove
+            setTimeout(() => {
+                div.style.opacity = '0';
+                div.style.transition = 'opacity 0.5s';
+                setTimeout(() => div.remove(), 500);
+            }, 3000);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+            return Math.round(bytes / (1024 * 1024)) + ' MB';
+        }
+
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        // --- Auth & Profile ---
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('authTitle').textContent = isLoginMode ? '欢迎回来' : '创建账号';
+            document.getElementById('authSubtitle').textContent = isLoginMode ? '请登录以继续管理您的服务' : '注册一个新的账号';
+            document.getElementById('authBtn').textContent = isLoginMode ? '登录' : '注册';
+            document.getElementById('authToggleLink').textContent = isLoginMode ? '注册新账号' : '已有账号？立即登录';
+        }
+
+        function handlePasswordEnter(event) {
+            if (event.key === 'Enter') handleAuth();
+        }
+
+        async function handleAuth() {
+            const u = document.getElementById('loginUsername').value;
+            const p = document.getElementById('loginPassword').value;
+            if (!u || !p) return showStatus('请输入用户名和密码', 'error');
+
+            const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (isLoginMode) {
+                        authToken = data.token;
+                        localStorage.setItem('gcli_token', data.token);
+                        localStorage.setItem('gcli_username', u);
+                        localStorage.setItem('gcli_role', data.role);
+                        localStorage.setItem('gcli_api_key', data.api_key);
+
+                        document.getElementById('loginSection').classList.add('hidden');
+                        document.getElementById('mainSection').classList.remove('hidden');
+
+                        updateProfileUI(u, data.role, data.api_key);
+                        showStatus('登录成功', 'success');
+                        loadSystemAnnouncement();
+                    } else {
+                        showStatus('注册成功', 'success');
+                        toggleAuthMode();
+                    }
+                } else {
+                    showStatus(data.detail || data.error || '操作失败', 'error');
+                }
+            } catch (e) {
+                showStatus('网络错误: ' + e.message, 'error');
+            }
+        }
+
+        function logout() {
+            if (!confirm('确定要退出登录吗？')) return;
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        function updateProfileUI(username, role, apiKey) {
+            document.getElementById('profileUsername').textContent = username;
+            document.getElementById('profileRoleBadge').textContent = role === 'admin' ? '管理员' : '用户';
+            document.getElementById('profileRoleBadge').className = `badge ${role === 'admin' ? 'badge-success' : 'badge-secondary'}`;
+
+            const keyInput = document.getElementById('userApiKey');
+            if (keyInput) keyInput.value = apiKey || '';
+
+            const isAdmin = role === 'admin';
+            const adminLink = document.getElementById('adminPanelLink');
+            if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
+
+            // Hide admin tabs if not admin
+            if (role !== 'admin') {
+                const adminTabs = ['envload', 'config', 'logs'];
+                adminTabs.forEach(t => {
+                    const btn = document.querySelector(`.tab[data-tab="${t}"]`);
+                    if (btn) btn.style.display = 'none';
+                });
+            }
+        }
+
+        async function loadSystemAnnouncement() {
+            try {
+                if (!authToken) return;
+                const response = await fetch('/announcement', { headers: getAuthHeaders() });
+                if (!response.ok) return;
+                const data = await response.json();
+
+                const banner = document.getElementById('systemAnnouncement');
+                const text = document.getElementById('announcementText');
+
+                if (data && data.enabled && data.content) {
+                    text.textContent = data.content;
+                    banner.classList.remove('hidden');
+                    if (data.level === 'danger') banner.style.borderLeftColor = 'var(--error)';
+                } else {
+                    banner.classList.add('hidden');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function checkLocalLogin() {
+            const token = localStorage.getItem('gcli_token');
+            if (token) {
+                authToken = token;
+                updateProfileUI(
+                    localStorage.getItem('gcli_username'),
+                    localStorage.getItem('gcli_role'),
+                    localStorage.getItem('gcli_api_key')
+                );
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('mainSection').classList.remove('hidden');
+                loadSystemAnnouncement();
+            }
+        }
+
+        // --- Tabs ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const btn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+            if (btn) btn.classList.add('active');
+
+            const content = document.getElementById(`${tabName}Tab`);
+            if (content) content.classList.add('active');
+
+            // Lazy load
+            if (tabName === 'manage') refreshCredsStatus();
+            if (tabName === 'usage') refreshUsageStats();
+            if (tabName === 'config') loadConfig();
+            if (tabName === 'envload') checkEnvCredsStatus();
+            if (tabName === 'logs') connectWebSocket();
+        }
+
+        // --- OAuth ---
+        function toggleProjectIdSection() {
+            const sec = document.getElementById('projectIdSection');
+            const icon = document.getElementById('projectIdToggleIcon');
+            const isHidden = sec.classList.contains('hidden');
+            sec.classList.toggle('hidden');
+            icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        function handleGetAllProjectsChange() {
+            const checked = document.getElementById('getAllProjectsCreds').checked;
+            const note = document.getElementById('allProjectsNote');
+            if (note) note.classList.toggle('hidden', !checked);
+        }
+
+        async function startAuth() {
+            const pid = document.getElementById('projectId').value.trim();
+            const all = document.getElementById('getAllProjectsCreds').checked;
+            currentProjectId = pid || null;
+
+            const btn = document.getElementById('getAuthBtn');
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            try {
+                const res = await fetch('/auth/start', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ project_id: pid || undefined, get_all_projects: all })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('authUrl').href = data.auth_url;
+                    //document.getElementById('authUrl').textContent = data.auth_url; // Keep constant text
+                    document.getElementById('authUrlSection').classList.remove('hidden');
+                    authInProgress = true;
+                    showStatus('认证链接生成成功', 'success');
+                } else {
+                    showStatus(data.error || '失败', 'error');
+                }
+            } catch (e) {
+                showStatus(e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '获取认证链接';
+            }
+        }
+
+        function toggleCallbackUrlSection() {
+            const sec = document.getElementById('callbackUrlSection');
+            const icon = document.getElementById('callbackUrlToggleIcon');
+            const isHidden = sec.classList.contains('hidden');
+            sec.classList.toggle('hidden');
+            icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        async function processCallbackUrl() {
+            const url = document.getElementById('callbackUrlInput').value.trim();
+            const all = document.getElementById('getAllProjectsCreds').checked;
+            if (!url) return showStatus('请输入URL', 'error');
+
+            try {
+                const res = await fetch('/auth/callback-url', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ callback_url: url, project_id: currentProjectId, get_all_projects: all })
+                });
+                const result = await res.json(); // Use result variable
+
+                if (res.ok) {
+                    handleAuthResult(result);
+                } else {
+                    showStatus(result.error || result.detail || '失败', 'error');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        async function getCredentials() {
+            //if(!authInProgress) return showStatus('请先获取链接并授权', 'error');
+            const all = document.getElementById('getAllProjectsCreds').checked;
+            const btn = document.getElementById('getCredsBtn');
+            btn.disabled = true;
+            btn.textContent = '获取中...';
+
+            try {
+                const res = await fetch('/auth/callback', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ project_id: currentProjectId, get_all_projects: all })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    handleAuthResult(data);
+                    authInProgress = false;
+                } else {
+                    showStatus(data.error || '获取失败', 'error');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = '获取凭证文件'; }
+        }
+
+        function handleAuthResult(data) {
+            const area = document.getElementById('credentialsContent');
+            const content = data.multiple_credentials || data.credentials;
+            area.textContent = JSON.stringify(content, null, 2);
+            document.getElementById('credentialsSection').classList.remove('hidden');
+
+            if (data.multiple_credentials) {
+                const s = data.multiple_credentials.success.length;
+                const f = data.multiple_credentials.failed.length;
+                showStatus(`批量认证结束: 成功 ${s}, 失败 ${f}`, 'success');
+            } else {
+                showStatus('认证成功', 'success');
+            }
+        }
+
+        // --- Upload ---
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            addFiles(files);
+        }
+        function addFiles(files) {
+            files.forEach(f => {
+                if ((f.name.endsWith('.json') || f.name.endsWith('.zip')) && !uploadSelectedFiles.find(x => x.name === f.name)) {
+                    uploadSelectedFiles.push(f);
+                }
+            });
+            updateFileList();
+        }
+        function updateFileList() {
+            const list = document.getElementById('fileList');
+            const section = document.getElementById('fileListSection');
+
+            if (uploadSelectedFiles.length === 0) return section.classList.add('hidden');
+            section.classList.remove('hidden');
+            list.innerHTML = '';
+
+            uploadSelectedFiles.forEach((f, i) => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <span>${f.name} <small class="text-secondary">(${formatFileSize(f.size)})</small></span>
+                    <button class="btn btn-outline-danger" style="padding: 0.1rem 0.5rem;" onclick="removeFile(${i})">移除</button>
+                 `;
+                list.appendChild(div);
+            });
+        }
+        function removeFile(i) { uploadSelectedFiles.splice(i, 1); updateFileList(); }
+        function clearFiles() { uploadSelectedFiles = []; updateFileList(); }
+
+        async function uploadFiles() {
+            if (uploadSelectedFiles.length === 0) return;
+            const formData = new FormData();
+            uploadSelectedFiles.forEach(f => formData.append('files', f));
+
+            const pSec = document.getElementById('uploadProgressSection');
+            const pFill = document.getElementById('progressFill');
+            const pText = document.getElementById('progressText');
+            pSec.classList.remove('hidden');
+
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const pct = (e.loaded / e.total) * 100;
+                        pFill.style.width = pct + '%';
+                        pText.textContent = Math.round(pct) + '%';
+                    }
+                };
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        showStatus('上传成功', 'success');
+                        clearFiles();
+                        pSec.classList.add('hidden');
+                    } else showStatus('上传失败', 'error');
+                };
+                xhr.onerror = () => showStatus('网络错误', 'error');
+                xhr.open('POST', '/auth/upload');
+                xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                xhr.send(formData);
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        // --- Env Load ---
+        async function checkEnvCredsStatus() {
+            const load = document.getElementById('envStatusLoading');
+            const cont = document.getElementById('envStatusContent');
+            load.style.display = 'block'; cont.classList.add('hidden');
+
+            try {
+                const res = await fetch('/auth/env-creds-status', { headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('envVarsList').textContent = Object.keys(data.available_env_vars).join(', ') || 'None';
+                    document.getElementById('autoLoadStatus').textContent = data.auto_load_enabled ? '已启用' : '未启用';
+                    document.getElementById('autoLoadStatus').className = `badge ${data.auto_load_enabled ? 'badge-success' : 'badge-warning'}`;
+                    document.getElementById('envFilesCount').textContent = data.existing_env_files_count;
+                    document.getElementById('envFilesList').textContent = data.existing_env_files.join(', ') || '无';
+                    cont.classList.remove('hidden');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+            finally { load.style.display = 'none'; }
+        }
+
+        async function loadEnvCredentials() {
+            try {
+                const res = await fetch('/auth/load-env-creds', { method: 'POST', headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    showStatus(`导入成功: ${data.loaded_count}/${data.total_count}`, 'success');
+                    checkEnvCredsStatus();
+                } else showStatus(data.error, 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        async function clearEnvCredentials() {
+            if (!confirm('确定清除吗？')) return;
+            try {
+                const res = await fetch('/auth/env-creds', { method: 'DELETE', headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    showStatus('清除成功', 'success');
+                    checkEnvCredsStatus();
+                } else showStatus(data.error, 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        // --- Manage Creds ---
+        async function refreshCredsStatus() {
+            const load = document.getElementById('credsLoading');
+            const list = document.getElementById('credsList');
+            load.style.display = 'block'; list.innerHTML = '';
+
+            try {
+                const res = await fetch('/creds/status', { headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    credsData = data.creds;
+                    calculateStats();
+                    applyFilters(); // Renders list
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+            finally { load.style.display = 'none'; }
+        }
+
+        function calculateStats() {
+            statsData = { total: 0, normal: 0, disabled: 0 };
+            availableErrorCodes.clear();
+            for (const [k, v] of Object.entries(credsData)) {
+                statsData.total++;
+                if (v.status.disabled) statsData.disabled++; else statsData.normal++;
+                if (v.status.error_codes) v.status.error_codes.forEach(c => availableErrorCodes.add(c));
+            }
+            // Update UI Stats
+            document.getElementById('statTotal').textContent = statsData.total;
+            document.getElementById('statNormal').textContent = statsData.normal;
+            document.getElementById('statDisabled').textContent = statsData.disabled;
+        }
+
+        function applyFilters() {
+            const sFilter = document.getElementById('statusFilter').value;
+            const eFilter = document.getElementById('errorCodeFilter').value;
+            filteredCredsData = {};
+
+            for (const [path, info] of Object.entries(credsData)) {
+                if (sFilter === 'normal' && info.status.disabled) continue;
+                if (sFilter === 'disabled' && !info.status.disabled) continue;
+
+                const codes = info.status.error_codes || [];
+                if (eFilter === 'no-errors' && codes.length > 0) continue;
+                if (eFilter === 'has-errors' && codes.length === 0) continue;
+                // Note: basic error filtering implemented, exact code match left out for brevity but straightforward to add
+
+                filteredCredsData[path] = info;
+            }
+
+            currentPage = 1;
+            renderCredsList();
+        }
+
+        function renderCredsList() {
+            const list = document.getElementById('credsList');
+            list.innerHTML = '';
+            const entries = Object.entries(filteredCredsData);
+            const start = (currentPage - 1) * pageSize;
+            const pageItems = entries.slice(start, start + pageSize);
+
+            if (pageItems.length === 0) {
+                list.innerHTML = '<div class="text-center text-secondary p-4">暂无数据</div>';
+            } else {
+                pageItems.forEach(([path, info]) => {
+                    list.appendChild(createCredCard(path, info));
+                });
+            }
+
+            // Pagination UI
+            const totalPages = Math.ceil(entries.length / pageSize);
+            const pCont = document.getElementById('paginationContainer');
+            if (totalPages > 1) {
+                pCont.classList.remove('hidden');
+                pCont.style.display = 'flex'; // override hidden
+                document.getElementById('paginationInfo').textContent = `${currentPage} / ${totalPages}`;
+                document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+                document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+            } else {
+                pCont.classList.add('hidden');
+            }
+
+            updateBatchControls();
+        }
+
+        function changePage(d) { currentPage += d; renderCredsList(); }
+        function changePageSize() { pageSize = parseInt(document.getElementById('pageSizeSelect').value); currentPage = 1; renderCredsList(); }
+
+        function createCredCard(fullPath, info) {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.style.flexDirection = 'column';
+            div.style.alignItems = 'stretch';
+
+            const pathId = btoa(encodeURIComponent(fullPath)).replace(/[+/=]/g, '_');
+            const statusBadge = info.status.disabled
+                ? '<span class="badge badge-secondary">已禁用</span>'
+                : '<span class="badge badge-success">正常</span>';
+
+            const errorBadges = (info.status.error_codes || []).map(c =>
+                `<span class="badge badge-error ml-2">Error ${c}</span>`
+            ).join('');
+
+            div.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-2">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" class="file-checkbox" data-filename="${info.filename}" onchange="toggleFileSelection('${info.filename}')">
+                        <div>
+                            <div class="font-bold flex items-center">
+                                ${info.filename}
+                                ${statusBadge}
+                                ${errorBadges}
+                            </div>
+                            <div class="text-sm text-secondary">${info.user_email || '未获取邮箱'}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cred-actions w-full justify-end">
+                    ${info.status.disabled
+                    ? `<button class="btn btn-secondary" onclick="credAction('${info.filename}', 'enable')">启用</button>`
+                    : `<button class="btn btn-secondary" onclick="credAction('${info.filename}', 'disable')">禁用</button>`}
+                    
+                    <button class="btn btn-secondary" onclick="toggleCredDetails('${pathId}')">详情</button>
+                    <button class="btn btn-secondary" onclick="downloadCred('${info.filename}')">下载</button>
+                    <button class="btn btn-secondary" onclick="fetchUserEmail('${info.filename}')">邮箱</button>
+                    <button class="btn btn-outline-danger" onclick="deleteCred('${info.filename}')">删除</button>
+                </div>
+                <div id="det-${pathId}" class="hidden w-full mt-2">
+                    <pre>${JSON.stringify(info.content || {}, null, 2)}</pre>
+                </div>
+            `;
+            // Checkbox state
+            const cb = div.querySelector('.file-checkbox');
+            if (cb) cb.checked = selectedCredFiles.has(info.filename);
+
+            return div;
+        }
+
+        function toggleCredDetails(id) {
+            document.getElementById('det-' + id).classList.toggle('hidden');
+        }
+
+        // Batch Actions
+        function toggleFileSelection(f) {
+            if (selectedCredFiles.has(f)) selectedCredFiles.delete(f); else selectedCredFiles.add(f);
+            updateBatchControls();
+        }
+        function toggleSelectAll() {
+            const all = document.getElementById('selectAllCheckbox').checked;
+            document.querySelectorAll('.file-checkbox').forEach(cb => {
+                cb.checked = all;
+                const f = cb.getAttribute('data-filename');
+                if (all) selectedCredFiles.add(f); else selectedCredFiles.delete(f);
+            });
+            updateBatchControls();
+        }
+        function updateBatchControls() {
+            document.getElementById('selectedCount').textContent = `已选 ${selectedCredFiles.size} 项`;
+            const has = selectedCredFiles.size > 0;
+            document.getElementById('batchEnableBtn').disabled = !has;
+            document.getElementById('batchDisableBtn').disabled = !has;
+            document.getElementById('batchDeleteBtn').disabled = !has;
+        }
+
+        async function batchAction(action) {
+            if (!confirm(`确定对 ${selectedCredFiles.size} 个文件执行 ${action} 吗？`)) return;
+            try {
+                const res = await fetch('/creds/batch-action', {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ action, filenames: Array.from(selectedCredFiles) })
+                });
+                if (res.ok) {
+                    showStatus('批量操作成功', 'success');
+                    selectedCredFiles.clear();
+                    refreshCredsStatus();
+                } else showStatus('操作失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        // Single Actions
+        async function credAction(f, a) {
+            try {
+                await fetch('/creds/action', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ filename: f, action: a }) });
+                refreshCredsStatus();
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+        async function deleteCred(f) {
+            if (!confirm('确定删除吗？不可恢复')) return;
+            credAction(f, 'delete');
+        }
+        async function downloadAllCreds() {
+            try {
+                const res = await fetch('/creds/download-all', { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'credentials.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const data = await res.json();
+                    showStatus(data.error || '下载失败', 'error');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        async function downloadCred(filename) {
+            try {
+                const res = await fetch(`/creds/download/${filename}`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const data = await res.json();
+                    showStatus(data.error || '下载失败', 'error');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+        async function fetchUserEmail(f) {
+            try {
+                const res = await fetch(`/creds/fetch-email/${encodeURIComponent(f)}`, { method: 'POST', headers: getAuthHeaders() });
+                if (res.ok) refreshCredsStatus(); else showStatus('获取失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+        async function refreshAllEmails() {
+            if (!confirm('确定刷新所有邮箱吗？可能较慢')) return;
+            try {
+                const res = await fetch('/creds/refresh-all-emails', { method: 'POST', headers: getAuthHeaders() });
+                if (res.ok) refreshCredsStatus(); else showStatus('刷新失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        // --- Usage ---
+        async function refreshUsageStats() {
+            const load = document.getElementById('usageLoading');
+            const list = document.getElementById('usageList');
+            load.style.display = 'block'; list.innerHTML = '';
+
+            try {
+                const res = await fetch('/usage/aggregated', { headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    const d = data.data;
+                    document.getElementById('totalApiCalls').textContent = d.total_calls_24h;
+                    document.getElementById('activeFilesCount').textContent = d.total_files;
+                    document.getElementById('avgCallsPerFile').textContent = Math.round(d.avg_calls_per_file);
+
+                    if (d.files_breakdown) {
+                        d.files_breakdown.forEach(item => {
+                            const card = document.createElement('div');
+                            card.className = 'stat-card';
+                            card.innerHTML = `
+                                <div class="font-bold mb-2 break-all">${item.filename}</div>
+                                <div class="stat-val text-info text-xl">${item.calls_24h}</div>
+                                <div class="stat-label">Calls</div>
+                             `;
+                            list.appendChild(card);
+                        });
+                    }
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+            finally { load.style.display = 'none'; }
+        }
+
+        // --- Config ---
+        async function loadConfig() {
+            const load = document.getElementById('configLoading');
+            const form = document.getElementById('configForm');
+            load.style.display = 'block'; form.classList.add('hidden');
+
+            try {
+                const res = await fetch('/config/get', { headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    const c = data.config || data;
+                    // Map fields
+                    setVal('host', c.host);
+                    setVal('port', c.port);
+                    setVal('credentialsDir', c.credentials_dir);
+                    setVal('proxy', c.proxy);
+                    setVal('codeAssistEndpoint', c.code_assist_endpoint);
+                    setVal('oauthProxyUrl', c.oauth_proxy_url);
+                    setVal('googleapisProxyUrl', c.googleapis_proxy_url);
+                    setVal('resourceManagerApiUrl', c.resource_manager_api_url);
+                    setVal('serviceUsageApiUrl', c.service_usage_api_url);
+
+                    setCheck('autoBanEnabled', c.auto_ban_enabled);
+                    setVal('autoBanErrorCodes', (c.auto_ban_error_codes || []).join(','));
+                    setVal('callsPerRotation', c.calls_per_rotation);
+                    setVal('antiTruncationMaxAttempts', c.anti_truncation_max_attempts);
+
+                    setCheck('compatibilityModeEnabled', c.compatibility_mode_enabled);
+                    setCheck('returnThoughtsToFrontend', c.return_thoughts_to_frontend);
+
+                    if (c.retry_429_enabled !== undefined) setCheck('retry429Enabled', c.retry_429_enabled);
+                    if (c.retry_429_max_retries !== undefined) setVal('retry429MaxRetries', c.retry_429_max_retries);
+                    if (c.retry_429_interval !== undefined) setVal('retry429Interval', c.retry_429_interval);
+
+                    form.classList.remove('hidden');
+                }
+            } catch (e) { showStatus(e.message, 'error'); }
+            finally { load.style.display = 'none'; }
+        }
+        function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v === undefined ? '' : v; }
+        function setCheck(id, v) { const el = document.getElementById(id); if (el) el.checked = !!v; }
+
+        async function saveConfig() {
+            const c = {
+                host: document.getElementById('host').value,
+                port: parseInt(document.getElementById('port').value),
+                credentials_dir: document.getElementById('credentialsDir').value,
+                proxy: document.getElementById('proxy').value,
+                code_assist_endpoint: document.getElementById('codeAssistEndpoint').value,
+                oauth_proxy_url: document.getElementById('oauthProxyUrl').value,
+                googleapis_proxy_url: document.getElementById('googleapisProxyUrl').value,
+                resource_manager_api_url: document.getElementById('resourceManagerApiUrl').value,
+                service_usage_api_url: document.getElementById('serviceUsageApiUrl').value,
+                auto_ban_enabled: document.getElementById('autoBanEnabled').checked,
+                auto_ban_error_codes: document.getElementById('autoBanErrorCodes').value.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x)),
+                calls_per_rotation: parseInt(document.getElementById('callsPerRotation').value),
+                anti_truncation_max_attempts: parseInt(document.getElementById('antiTruncationMaxAttempts').value),
+                compatibility_mode_enabled: document.getElementById('compatibilityModeEnabled').checked,
+                return_thoughts_to_frontend: document.getElementById('returnThoughtsToFrontend').checked,
+                retry_429_enabled: document.getElementById('retry429Enabled').checked,
+                retry_429_max_retries: parseInt(document.getElementById('retry429MaxRetries').value),
+                retry_429_interval: parseFloat(document.getElementById('retry429Interval').value)
+            };
+
+            try {
+                const res = await fetch('/config/save', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ config: c }) });
+                const data = await res.json();
+                if (res.ok) showStatus('配置保存成功' + (data.restart_required ? ' (需重启)' : ''), 'success');
+                else showStatus('保存失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        const mirrors = {
+            codeAssistEndpoint: 'https://gcli-api.sukaka.top/cloudcode-pa',
+            oauthProxyUrl: 'https://gcli-api.sukaka.top/oauth2',
+            googleapisProxyUrl: 'https://gcli-api.sukaka.top/googleapis',
+            resourceManagerApiUrl: 'https://gcli-api.sukaka.top/cloudresourcemanager',
+            serviceUsageApiUrl: 'https://gcli-api.sukaka.top/serviceusage'
+        };
+        const officials = {
+            codeAssistEndpoint: 'https://cloudcode-pa.googleapis.com',
+            oauthProxyUrl: 'https://oauth2.googleapis.com',
+            googleapisProxyUrl: 'https://www.googleapis.com',
+            resourceManagerApiUrl: 'https://cloudresourcemanager.googleapis.com',
+            serviceUsageApiUrl: 'https://serviceusage.googleapis.com'
+        };
+        function useMirrorUrls() {
+            for (const [k, v] of Object.entries(mirrors)) setVal(k, v);
+            showStatus('已填充镜像地址');
+        }
+        function restoreOfficialUrls() {
+            for (const [k, v] of Object.entries(officials)) setVal(k, v);
+            showStatus('已恢复官方地址');
+        }
+
+        // --- Profile ---
+        function copyApiKey() {
+            const el = document.getElementById('userApiKey');
+            el.select(); document.execCommand('copy');
+            showStatus('已复制');
+        }
+        async function regenerateApiKey() {
+            if (!confirm('确定重置吗？旧Key失效')) return;
+            try {
+                const res = await fetch('/user/api-key', { method: 'POST', headers: getAuthHeaders() });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('gcli_api_key', data.api_key);
+                    document.getElementById('userApiKey').value = data.api_key;
+                    showStatus('重置成功', 'success');
+                } else showStatus('失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+        async function changePassword() {
+            const p = document.getElementById('newPassword').value;
+            try {
+                const res = await fetch('/user/password', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ new_password: p }) });
+                if (res.ok) { document.getElementById('newPassword').value = ''; showStatus('修改成功', 'success'); }
+                else showStatus('失败', 'error');
+            } catch (e) { showStatus(e.message, 'error'); }
+        }
+
+        // --- Logs ---
+        function connectWebSocket() {
+            if (logWebSocket) return;
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            logWebSocket = new WebSocket(`${proto}//${window.location.host}/auth/logs/stream?token=${authToken}`);
+            logWebSocket.onopen = () => {
+                document.getElementById('connectionStatusText').textContent = '已连接';
+                document.getElementById('statusDot').style.background = 'var(--success)';
+            };
+            logWebSocket.onmessage = (e) => {
+                allLogs.push(e.data);
+                if (allLogs.length > 1000) allLogs.shift();
+                filterLogs();
+                if (document.getElementById('autoScroll').checked) {
+                    const c = document.getElementById('logContainer');
+                    c.scrollTop = c.scrollHeight;
+                }
+            };
+            logWebSocket.onclose = () => {
+                document.getElementById('connectionStatusText').textContent = '已断开';
+                document.getElementById('statusDot').style.background = 'var(--error)';
+                logWebSocket = null;
+            };
+        }
+        function disconnectWebSocket() { if (logWebSocket) logWebSocket.close(); }
+        function filterLogs() {
+            const f = document.getElementById('logLevelFilter').value;
+            const c = document.getElementById('logContainer');
+            if (f === 'all') c.textContent = allLogs.join('\n');
+            else c.textContent = allLogs.filter(l => l.includes(f)).join('\n');
+        }
+        async function clearLogs() {
+            try { await fetch('/auth/logs/clear', { method: 'POST', headers: getAuthHeaders() }); allLogs = []; filterLogs(); } catch (e) { }
+        }
+        async function downloadLogs() { window.open('/auth/logs/download?token=' + authToken, '_blank'); }
+
+        // --- Init ---
+        window.onload = checkLocalLogin;
+
+    </script>
+</body>
+
+</html>
